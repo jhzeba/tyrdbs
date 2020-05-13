@@ -155,6 +155,7 @@ int main(int argc, const char* argv[])
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 
     auto f = io::file::open(io::file::access::read, cmd.get<std::string_view>("file"));
+    /*
     auto stat = f.stat();
 
     uint32_t pages = 0;
@@ -218,6 +219,7 @@ int main(int argc, const char* argv[])
 
     logger::notice("avg iops: {:.2f}", iops);
     logger::notice("avg read: {:.2f} MiB/s", iops / 256);
+    */
 
     return 0;
 }

@@ -1,14 +1,14 @@
+#include <common/branch_prediction.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/location.h>
 
 #include <crc32c.h>
 
+#include <cassert>
+
 
 namespace tyrtech::tyrdbs {
-
-
-thread_local uint64_t slice_count{0};
 
 
 class slice_iterator : public iterator
@@ -171,56 +171,17 @@ uint64_t slice::key_count() const
     return m_key_count;
 }
 
-const storage::extents_t& slice::extents() const
-{
-    return m_reader.extents();
-}
-
-uint64_t slice::count()
-{
-    return slice_count;
-}
-
-slice::slice(storage::file_reader&& reader)
-  : m_slice_ndx(storage::new_cache_id())
-  , m_reader(std::move(reader))
-{
-    assert(likely((m_reader.size() & storage::page_mask) == 0));
-    assert(likely(m_reader.size() > storage::page_size));
-
-    header h;
-
-    m_reader.pread(m_reader.size() - storage::page_size,
-                   reinterpret_cast<char*>(&h),
-                   sizeof(h));
-
-    if (h.signature != signature)
-    {
-        throw runtime_error("invalid slice signature");
-    }
-
-    m_key_count = h.stats.key_count;
-
-    m_root = h.root;
-    m_first_node_size = h.first_node_size;
-
-    slice_count++;
-}
-
 slice::~slice()
 {
-    assert(likely(slice_count > 0));
-    slice_count--;
-
     if (m_unlink == true)
     {
-        m_reader.unlink();
+        m_file.unlink();
     }
 }
 
 cache::node_ptr slice::load(uint64_t location) const
 {
-    return cache::get(m_reader, m_slice_ndx, location);
+    return cache::get(m_file, m_slice_ndx, location);
 }
 
 uint64_t slice::find_node_for(uint64_t location,

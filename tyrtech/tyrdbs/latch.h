@@ -6,7 +6,7 @@
 #include <unordered_map>
 
 
-namespace tyrtech::storage {
+namespace tyrtech::tyrdbs {
 
 
 template<typename Key, typename Value, typename KeyHasher = std::hash<Key>>

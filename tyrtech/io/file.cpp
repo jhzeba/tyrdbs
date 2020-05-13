@@ -24,7 +24,9 @@ void file::initialize(uint32_t queue_size)
 
 void file::open(int32_t flags, int32_t mode)
 {
-    m_fd = ::open(m_path, flags, mode);
+    queue_flow::resource r(*__queue_flow);
+
+    m_fd = io::openat(AT_FDCWD, m_path, flags, mode);
 
     if (unlikely(m_fd == -1))
     {
@@ -32,17 +34,7 @@ void file::open(int32_t flags, int32_t mode)
     }
 }
 
-void file::mkostemp(int32_t flags)
-{
-    m_fd = ::mkostemp(m_path, flags);
-
-    if (unlikely(m_fd == -1))
-    {
-        throw error("{}: {}", m_path, system_error().message);
-    }
-}
-
-void file::pread(uint64_t offset, char* data, uint32_t size)
+void file::pread(uint64_t offset, char* data, uint32_t size) const
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -59,7 +51,7 @@ void file::pread(uint64_t offset, char* data, uint32_t size)
     }
 }
 
-void file::pwrite(uint64_t offset, const char* data, uint32_t size)
+void file::pwrite(uint64_t offset, const char* data, uint32_t size) const
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -76,7 +68,7 @@ void file::pwrite(uint64_t offset, const char* data, uint32_t size)
     }
 }
 
-uint32_t file::preadv(uint64_t offset, iovec* iov, uint32_t size)
+uint32_t file::preadv(uint64_t offset, iovec* iov, uint32_t size) const
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -90,7 +82,7 @@ uint32_t file::preadv(uint64_t offset, iovec* iov, uint32_t size)
     return static_cast<uint32_t>(res);
 }
 
-uint32_t file::pwritev(uint64_t offset, iovec* iov, uint32_t size)
+uint32_t file::pwritev(uint64_t offset, iovec* iov, uint32_t size) const
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -104,6 +96,7 @@ uint32_t file::pwritev(uint64_t offset, iovec* iov, uint32_t size)
     return static_cast<uint32_t>(res);
 }
 
+/*
 void file::allocate(int32_t mode, uint64_t offset, uint64_t size)
 {
     queue_flow::resource r(*__queue_flow);
@@ -142,7 +135,7 @@ bool file::try_lock()
 
     return true;
 }
-
+*/
 void file::unlink()
 {
     if (auto res = ::unlink(m_path); unlikely(res == -1))

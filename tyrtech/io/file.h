@@ -19,8 +19,8 @@ public:
 public:
     enum class access
     {
-        read,
-        write,
+        read_only,
+        write_only,
         read_write
     };
 
@@ -45,13 +45,13 @@ public:
 
         switch (access)
         {
-            case access::read:
+            case access::read_only:
             {
                 flags |= O_RDONLY;
 
                 break;
             }
-            case access::write:
+            case access::write_only:
             {
                 flags |= O_WRONLY;
 
@@ -71,28 +71,17 @@ public:
         return f;
     }
 
-    template<typename... Arguments>
-    static file mktemp(Arguments&&... arguments)
-    {
-        int32_t flags = O_LARGEFILE | O_CLOEXEC;
-
-        file f(std::forward<Arguments>(arguments)...);
-        f.mkostemp(flags);
-
-        return f;
-    }
-
 public:
-    void pread(uint64_t offset, char* data, uint32_t size);
-    void pwrite(uint64_t offset, const char* data, uint32_t size);
+    void pread(uint64_t offset, char* data, uint32_t size) const;
+    void pwrite(uint64_t offset, const char* data, uint32_t size) const;
 
-    uint32_t preadv(uint64_t offset, iovec* iov, uint32_t size);
-    uint32_t pwritev(uint64_t offset, iovec* iov, uint32_t size);
+    uint32_t preadv(uint64_t offset, iovec* iov, uint32_t size) const;
+    uint32_t pwritev(uint64_t offset, iovec* iov, uint32_t size) const;
 
-    void allocate(int32_t mode, uint64_t offset, uint64_t size);
-    struct stat64 stat();
+    //void allocate(int32_t mode, uint64_t offset, uint64_t size);
 
-    bool try_lock();
+    //struct stat64 stat();
+    //bool try_lock();
 
     void unlink();
 

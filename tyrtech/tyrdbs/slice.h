@@ -1,10 +1,12 @@
 #pragma once
 
 
-#include <storage/engine.h>
+#include <io/file.h>
 #include <tyrdbs/node.h>
 #include <tyrdbs/attributes.h>
 #include <tyrdbs/iterator.h>
+
+#include <memory>
 
 
 namespace tyrtech::tyrdbs {
@@ -29,15 +31,34 @@ public:
     void unlink();
 
     uint64_t key_count() const;
-    const storage::extents_t& extents() const;
 
 public:
     static uint64_t count();
 
 public:
-    slice() = default;
-    slice(storage::file_reader&& reader);
+    template<typename... Arguments>
+    slice(uint32_t size, Arguments&&... arguments)
+      : m_file(io::file::open(io::file::access::read_only,
+                              std::forward<Arguments>(arguments)...))
+    {
+        header h;
 
+        m_file.pread(size - node::page_size,
+                     reinterpret_cast<char*>(&h),
+                     sizeof(h));
+
+        if (h.signature != signature)
+        {
+            throw runtime_error("invalid slice signature");
+        }
+
+        m_key_count = h.stats.key_count;
+
+        m_root = h.root;
+        m_first_node_size = h.first_node_size;
+    }
+
+    slice() = default;
     ~slice();
 
 private:
@@ -55,7 +76,7 @@ public:
 private:
     uint64_t m_slice_ndx{static_cast<uint64_t>(-1)};
 
-    storage::file_reader m_reader;
+    io::file m_file;
 
     uint64_t m_key_count{0};
 

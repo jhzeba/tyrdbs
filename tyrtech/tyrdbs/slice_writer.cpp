@@ -8,9 +8,6 @@
 namespace tyrtech::tyrdbs {
 
 
-extern thread_local uint64_t slice_count;
-
-
 void slice_writer::index_writer::add(const std::string_view& min_key,
                                      const std::string_view& max_key,
                                      uint64_t location)
@@ -162,45 +159,29 @@ void slice_writer::flush()
     m_last_node->set_next(location::invalid_size);
 
     m_writer.write(location::invalid_size);
-    m_writer.add_padding();
+    m_writer.add_padding_to(node::page_size);
 
     m_writer.write(m_header);
-    m_writer.add_padding();
+    m_writer.add_padding_to(node::page_size);
 
     m_writer.flush();
 }
 
-std::shared_ptr<slice> slice_writer::commit()
+uint64_t slice_writer::commit()
 {
     assert(likely(m_header.root != static_cast<uint64_t>(-1)));
 
     assert(likely(m_commited == false));
     m_commited = true;
 
-    auto c = std::make_shared<slice>();
-
-    c->m_slice_ndx = m_slice_ndx;
-    c->m_reader = storage::create_reader(m_writer.commit());
-    c->m_key_count = m_header.stats.key_count;
-    c->m_root = m_header.root;
-    c->m_first_node_size = m_header.first_node_size;
-
-    return c;
-}
-
-slice_writer::slice_writer()
-  : m_slice_ndx(storage::new_cache_id())
-  , m_writer(storage::create_writer())
-{
-    slice_count++;
+    return m_writer.offset();
 }
 
 slice_writer::~slice_writer()
 {
     if (m_commited == false)
     {
-        assert(likely(slice_count > 0));
-        slice_count--;
+        m_file.unlink();
     }
 }
 
@@ -258,9 +239,6 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
 {
     assert(likely(m_commited == false));
 
-    using buffer_t =
-            std::array<char, node::page_size>;
-
     buffer_t buffer;
 
     uint32_t size = node->flush(buffer.data(), buffer.size());
@@ -276,7 +254,7 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
         m_header.first_node_size = location::size(size, is_leaf);
     }
 
-    uint64_t location = location::location(m_writer.size(), size, is_leaf);
+    uint64_t location = location::location(m_writer.offset(), size, is_leaf);
 
     m_writer.write(crc32c_update(0, buffer.data(), size));
     m_writer.write(buffer.data(), size);

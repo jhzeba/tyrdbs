@@ -1,6 +1,8 @@
 #pragma once
 
 
+#include <common/buffered_writer.h>
+#include <io/file_writer.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/node_writer.h>
 #include <tyrdbs/key_buffer.h>
@@ -26,10 +28,16 @@ public:
              uint64_t idx);
 
     void flush();
-    std::shared_ptr<slice> commit();
+    uint64_t commit();
 
 public:
-    slice_writer();
+    template<typename... Arguments>
+    slice_writer(Arguments&&... arguments)
+      : m_slice_ndx(-1)//storage::new_cache_id())
+      , m_file(io::file::create(std::forward<Arguments>(arguments)...))
+    {
+    }
+
     ~slice_writer();
 
 private:
@@ -61,6 +69,13 @@ private:
     };
 
 private:
+    using buffer_t =
+            std::array<char, node::page_size>;
+
+    using writer_t =
+            buffered_writer<buffer_t, io::file_writer>;
+
+private:
     uint64_t m_slice_ndx{static_cast<uint64_t>(-1)};
 
     key_buffer m_first_key;
@@ -70,7 +85,11 @@ private:
 
     bool m_commited{false};
 
-    storage::file_writer m_writer;
+    buffer_t m_buffer;
+    io::file m_file;
+
+    io::file_writer m_file_writer{&m_file, 0};
+    writer_t m_writer{&m_buffer, &m_file_writer};
 
     node_writer m_node;
     index_writer m_index{this};

@@ -247,7 +247,7 @@ struct impl : private disallow_copy
         ctx->snapshot = ushard->get_slices();
 
         auto&& snapshot = tests::snapshot_builder(response->add_snapshot());
-        snapshot.add_path(storage::path());
+        snapshot.add_path("");//storage::path());
 
         auto&& slices = snapshot.add_slices();
 
@@ -265,9 +265,11 @@ struct impl : private disallow_copy
 
     void print_stats()
     {
+        /*
         logger::notice("capacity:    {}", storage::capacity());
         logger::notice("used blocks: {}", storage::size());
         logger::notice("free blocks: {}", storage::capacity() - storage::size());
+        */
     }
 
     impl(uint32_t merge_threads,
@@ -527,34 +529,8 @@ int main(int argc, const char* argv[])
                   nullptr,
                   "cache-bits",
                   "bits",
-                  "18",
-                  {"cache size expressed as 2^bits (default is 18)"});
-
-    cmd.add_param("write-cache-bits",
-                  nullptr,
-                  "write-cache-bits",
-                  "bits",
-                  "14",
-                  {"write cache size expressed as 2^bits (default is 14)"});
-
-    cmd.add_param("block-cache-bits",
-                  nullptr,
-                  "block-cache-bits",
-                  "bits",
                   "12",
-                  {"block cache size expressed as 2^bits (default is 12)"});
-
-    cmd.add_flag("preallocate-space",
-                 nullptr,
-                 "preallocate-space",
-                 {"preallocate space on disk"});
-
-    cmd.add_param("storage-file",
-                  nullptr,
-                  "storage-file",
-                  "file",
-                  "storage.dat",
-                  {"storage file to use (default storage.dat)"});
+                  {"cache size expressed as 2^bits (default is 12)"});
 
     cmd.add_param("uri",
                   "<uri>",
@@ -572,12 +548,7 @@ int main(int argc, const char* argv[])
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
     io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
-    tyrdbs::cache::initialize(cmd.get<uint32_t>("block-cache-bits"));
-
-    storage::initialize(io::file::create(cmd.get<std::string_view>("storage-file")),
-                        cmd.get<uint32_t>("cache-bits"),
-                        cmd.get<uint32_t>("write-cache-bits"),
-                        cmd.flag("preallocate-space"));
+    tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
     module::impl impl(cmd.get<uint32_t>("merge-threads"),
                       cmd.get<uint32_t>("ushards"),

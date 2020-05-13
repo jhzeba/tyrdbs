@@ -24,7 +24,7 @@ int32_t recv(int32_t fd, char* buffer, uint32_t size, int32_t flags, uint64_t ti
 int32_t accept(int32_t fd, sockaddr* address, uint32_t* address_size, uint64_t timeout);
 int32_t connect(int32_t fd, const sockaddr* address, uint32_t address_size, uint64_t timeout);
 
-int32_t allocate(int32_t fd, int32_t mode, uint64_t offset, uint64_t size);
+int32_t openat(int32_t dfd, const char* path, int32_t flags, mode_t mode);
 int32_t close(int32_t fd);
 
 int32_t sync(int32_t fd, uint32_t flags);

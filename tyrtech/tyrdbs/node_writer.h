@@ -4,6 +4,7 @@
 #include <common/branch_prediction.h>
 #include <tyrdbs/node.h>
 
+#include <memory>
 #include <cassert>
 
 

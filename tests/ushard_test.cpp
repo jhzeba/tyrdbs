@@ -1,7 +1,7 @@
 #include <common/cmd_line.h>
 #include <common/cpu_sched.h>
 #include <gt/engine.h>
-#include <gt/async.h>
+#include <gt/condition.h>
 #include <io/engine.h>
 #include <tyrdbs/ushard.h>
 #include <tyrdbs/cache.h>
@@ -390,7 +390,7 @@ void report(thread_data* t)
 
 int main(int argc, const char* argv[])
 {
-    cmd_line cmd(argv[0], "Ushard layer test.", nullptr);
+    cmd_line cmd(argv[0], "ushard layer test.", nullptr);
 
     cmd.add_param("storage-queue-depth",
                   nullptr,
@@ -417,27 +417,8 @@ int main(int argc, const char* argv[])
                   nullptr,
                   "cache-bits",
                   "bits",
-                  "18",
-                  {"cache size expressed as 2^bits (default is 18)"});
-
-    cmd.add_param("write-cache-bits",
-                  nullptr,
-                  "write-cache-bits",
-                  "bits",
-                  "14",
-                  {"write cache size expressed as 2^bits (default is 14)"});
-
-    cmd.add_param("block-cache-bits",
-                  nullptr,
-                  "block-cache-bits",
-                  "bits",
                   "12",
-                  {"block cache size expressed as 2^bits (default is 12)"});
-
-    cmd.add_flag("preallocate-space",
-                 nullptr,
-                 "preallocate-space",
-                 {"preallocate space on disk"});
+                  {"cache size expressed as 2^bits (default is 12)"});
 
     cmd.add_flag("compact",
                  nullptr,
@@ -458,13 +439,6 @@ int main(int argc, const char* argv[])
                   "test.data",
                   {"test data file (default test.data)"});
 
-    cmd.add_param("storage-file",
-                  nullptr,
-                  "storage-file",
-                  "file",
-                  "storage.dat",
-                  {"storage file to use (default storage.dat)"});
-
     cmd.parse(argc, argv);
 
     set_cpu(cmd.get<uint32_t>("cpu"));
@@ -475,16 +449,10 @@ int main(int argc, const char* argv[])
     assert(crc32c_initialize() == true);
 
     gt::initialize();
-    gt::async::initialize();
     io::initialize(4096);
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 
-    tyrdbs::cache::initialize(cmd.get<uint32_t>("block-cache-bits"));
-
-    storage::initialize(io::file::create(cmd.get<std::string_view>("storage-file")),
-                        cmd.get<uint32_t>("cache-bits"),
-                        cmd.get<uint32_t>("write-cache-bits"),
-                        cmd.flag("preallocate-space"));
+    tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
     std::vector<thread_data> td;
 
@@ -513,6 +481,7 @@ int main(int argc, const char* argv[])
         report(&t);
     }
 
+    /*
     uint32_t capacity = storage::capacity();
     uint32_t size = storage::size();
 
@@ -520,6 +489,7 @@ int main(int argc, const char* argv[])
     logger::notice("capacity:    {}", capacity);
     logger::notice("used blocks: {}", size);
     logger::notice("free blocks: {}", capacity - size);
+    */
 
     return 0;
 }

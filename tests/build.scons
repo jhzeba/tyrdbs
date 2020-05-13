@@ -3,7 +3,6 @@ Import('env')
 
 default_libs = [
     'tyrdbs',
-    'storage',
     'net',
     'io',
     'gt',
@@ -20,6 +19,12 @@ env.Program(
     LIBS=default_libs
 )
 
+env.Program(
+    target='slice_test',
+    source=['slice_test.cpp'],
+    LIBS=default_libs
+)
+"""
 env.Program(
     target='ushard_test',
     source=['ushard_test.cpp'],
@@ -115,7 +120,7 @@ env.Program(
     source=['db_dump.cpp'],
     LIBS=default_libs
 )
-
+"""
 scripts = [
 ]
 

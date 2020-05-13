@@ -279,12 +279,12 @@ int32_t connect(int32_t fd, const sockaddr* address, uint32_t address_size, uint
     return wait_for(&request);
 }
 
-int32_t allocate(int32_t fd, int32_t mode, uint64_t offset, uint64_t size)
+int32_t openat(int32_t dfd, const char* path, int32_t flags, mode_t mode)
 {
     io_uring::request request;
     io_uring_sqe* sqe = get_sqe();
 
-    io_uring_prep_fallocate(sqe, fd, mode, offset, size);
+    io_uring_prep_openat(sqe, dfd, path, flags, mode);
     io_uring_sqe_set_data(sqe, &request);
     io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 

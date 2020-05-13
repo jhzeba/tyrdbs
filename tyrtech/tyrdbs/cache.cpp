@@ -1,5 +1,5 @@
 #include <common/wtinylfu.h>
-#include <storage/latch.h>
+#include <tyrdbs/latch.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/location.h>
 
@@ -44,7 +44,7 @@ using cache_t =
         wtinylfu<cache::key, node_ptr, cache::key_hasher>;
 
 using latch_t =
-        storage::latch<cache::key, node_ptr, cache::key_hasher>;
+        latch<cache::key, node_ptr, cache::key_hasher>;
 
 
 thread_local std::unique_ptr<cache_t> __cache;
@@ -78,7 +78,7 @@ void set(uint64_t chunk_ndx, uint64_t location, node_ptr node)
     __cache->set(key, std::move(node));
 }
 
-node_ptr load(const storage::file_reader& reader, uint64_t location)
+node_ptr load(const io::file& reader, uint64_t location)
 {
     uint64_t node_offset = location::offset_from(location);
     uint16_t node_size = location::size_from(location);
@@ -119,7 +119,7 @@ node_ptr load(const storage::file_reader& reader, uint64_t location)
     return node;
 }
 
-node_ptr get(const storage::file_reader& reader, uint64_t chunk_ndx, uint64_t location)
+node_ptr get(const io::file& reader, uint64_t chunk_ndx, uint64_t location)
 {
     if (__cache.get() == nullptr)
     {

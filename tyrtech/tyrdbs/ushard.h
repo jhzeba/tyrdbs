@@ -3,6 +3,9 @@
 
 #include <tyrdbs/slice_writer.h>
 
+#include <vector>
+#include <unordered_map>
+
 
 namespace tyrtech::tyrdbs {
 

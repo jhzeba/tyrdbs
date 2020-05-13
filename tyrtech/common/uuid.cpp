@@ -1,21 +1,24 @@
+#include <common/branch_prediction.h>
 #include <common/uuid.h>
 
 #include <uuid/uuid.h>
+#include <cassert>
 
 
 namespace tyrtech {
 
 
-std::string_view uuid()
+std::string_view uuid::str(char* buffer, uint32_t size)
 {
-    uuid_t uuid;
+    assert(likely(size >= 37));
 
-    static thread_local char str[37];
+    uuid_unparse_lower(m_uuid, buffer);
+    return std::string_view(buffer, 36);
+}
 
-    uuid_generate_random(uuid);
-    uuid_unparse_lower(uuid, str);
-
-    return std::string_view(str, 36);
+uuid::uuid()
+{
+    uuid_generate_random(m_uuid);
 }
 
 }
