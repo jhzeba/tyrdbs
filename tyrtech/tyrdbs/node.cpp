@@ -20,7 +20,7 @@ void node::load(const char* source, uint32_t source_size)
 
     if (r != static_cast<int32_t>(m_data.size()))
     {
-        throw runtime_error("unable to decompress node");
+        throw runtime_error_exception("unable to decompress node");
     }
 
     m_key_count = *reinterpret_cast<const uint16_t*>(m_data.data());

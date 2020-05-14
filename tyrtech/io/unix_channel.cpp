@@ -34,7 +34,7 @@ int32_t create_socket()
 
     if (unlikely(s == -1))
     {
-        throw runtime_error("socket(): {}", system_error().message);
+        throw runtime_error_exception("socket(): {}", system_error().message);
     }
 
     return s;

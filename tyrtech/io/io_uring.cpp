@@ -45,7 +45,7 @@ engine::engine(uint32_t queue_size)
 
     if (unlikely(res < 0))
     {
-        throw runtime_error("io_uring_init(): {}", system_error(-res).message);
+        throw runtime_error_exception("io_uring_init(): {}", system_error(-res).message);
     }
 
     gt::create_system_thread(&engine::io_uring_thread, this);
@@ -89,8 +89,8 @@ void engine::io_uring_thread()
 
                 if (unlikely(res < 0))
                 {
-                    throw runtime_error("io_uring_submit_and_wait(): {}",
-                                        system_error(-res).message);
+                    throw runtime_error_exception("io_uring_submit_and_wait(): {}",
+                                                  system_error(-res).message);
                 }
             }
 

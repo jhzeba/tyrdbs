@@ -14,7 +14,7 @@ namespace tyrtech::tyrdbs {
 class slice_writer : private disallow_copy, disallow_move
 {
 public:
-    DEFINE_EXCEPTION(runtime_error, invalid_data_error);
+    DEFINE_EXCEPTION(runtime_error_exception, invalid_data_exception);
 
 public:
     static constexpr uint64_t max_idx{0x1000000000000ULL};

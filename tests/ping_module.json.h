@@ -98,15 +98,15 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
     {
         case -1:
         {
-            throw tyrtech::net::unknown_module_error("{}", error.message());
+            throw tyrtech::net::unknown_module_exception("{}", error.message());
         }
         case -2:
         {
-            throw tyrtech::net::unknown_function_error("{}", error.message());
+            throw tyrtech::net::unknown_function_exception("{}", error.message());
         }
         default:
         {
-            throw tyrtech::net::unknown_exception_error("#{}: unknown exception", error.code());
+            throw tyrtech::net::unknown_exception("#{}: unknown exception", error.code());
         }
     }
 }
@@ -170,7 +170,7 @@ struct module : private tyrtech::disallow_copy
             }
             default:
             {
-                throw tyrtech::net::unknown_function_error("#{}: unknown function", service_request.function());
+                throw tyrtech::net::unknown_function_exception("#{}: unknown function", service_request.function());
             }
         }
     }

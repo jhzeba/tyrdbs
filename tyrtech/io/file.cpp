@@ -30,7 +30,7 @@ void file::open(int32_t flags, int32_t mode)
 
     if (unlikely(m_fd == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 }
 
@@ -42,12 +42,12 @@ void file::pread(uint64_t offset, char* data, uint32_t size) const
 
     if (unlikely(res == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 
     if (unlikely(res != static_cast<int32_t>(size)))
     {
-        throw error("{}: unable to read", m_path);
+        throw exception("{}: unable to read", m_path);
     }
 }
 
@@ -59,12 +59,12 @@ void file::pwrite(uint64_t offset, const char* data, uint32_t size) const
 
     if (unlikely(res == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 
     if (unlikely(res != static_cast<int32_t>(size)))
     {
-        throw error("{}: unable to write", m_path);
+        throw exception("{}: unable to write", m_path);
     }
 }
 
@@ -76,7 +76,7 @@ uint32_t file::preadv(uint64_t offset, iovec* iov, uint32_t size) const
 
     if (unlikely(res == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 
     return static_cast<uint32_t>(res);
@@ -90,7 +90,7 @@ uint32_t file::pwritev(uint64_t offset, iovec* iov, uint32_t size) const
 
     if (unlikely(res == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 
     return static_cast<uint32_t>(res);

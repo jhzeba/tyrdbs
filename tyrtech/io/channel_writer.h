@@ -10,7 +10,7 @@ namespace tyrtech::io {
 class channel_writer : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(channel::error, error);
+    DEFINE_EXCEPTION(channel::exception, exception);
 
 public:
     uint32_t write(const char* data, uint32_t size);

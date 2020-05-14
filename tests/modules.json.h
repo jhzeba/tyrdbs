@@ -259,9 +259,9 @@ struct response_parser final : public tyrtech::message::struct_parser<2, 0>
 
 }
 
-DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error, test1_error);
-DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error, test2_error);
-DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error, test3_error);
+DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, test1_error);
+DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error_exception, test2_error);
+DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error_exception, test3_error);
 
 void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
@@ -269,11 +269,11 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
     {
         case -1:
         {
-            throw tyrtech::net::unknown_module_error("{}", error.message());
+            throw tyrtech::net::unknown_module_exception("{}", error.message());
         }
         case -2:
         {
-            throw tyrtech::net::unknown_function_error("{}", error.message());
+            throw tyrtech::net::unknown_function_exception("{}", error.message());
         }
         case 1:
         {
@@ -289,7 +289,7 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
         }
         default:
         {
-            throw tyrtech::net::unknown_exception_error("#{}: unknown exception", error.code());
+            throw tyrtech::net::unknown_exception("#{}: unknown exception", error.code());
         }
     }
 }
@@ -392,7 +392,7 @@ struct module : private tyrtech::disallow_copy
             }
             default:
             {
-                throw tyrtech::net::unknown_function_error("#{}: unknown function", service_request.function());
+                throw tyrtech::net::unknown_function_exception("#{}: unknown function", service_request.function());
             }
         }
     }
@@ -657,9 +657,9 @@ struct response_parser final : public tyrtech::message::struct_parser<2, 0>
 
 }
 
-DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error, test1_error);
-DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error, test2_error);
-DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error, test3_error);
+DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, test1_error);
+DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error_exception, test2_error);
+DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error_exception, test3_error);
 
 void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
@@ -667,11 +667,11 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
     {
         case -1:
         {
-            throw tyrtech::net::unknown_module_error("{}", error.message());
+            throw tyrtech::net::unknown_module_exception("{}", error.message());
         }
         case -2:
         {
-            throw tyrtech::net::unknown_function_error("{}", error.message());
+            throw tyrtech::net::unknown_function_exception("{}", error.message());
         }
         case 1:
         {
@@ -687,7 +687,7 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
         }
         default:
         {
-            throw tyrtech::net::unknown_exception_error("#{}: unknown exception", error.code());
+            throw tyrtech::net::unknown_exception("#{}: unknown exception", error.code());
         }
     }
 }
@@ -790,7 +790,7 @@ struct module : private tyrtech::disallow_copy
             }
             default:
             {
-                throw tyrtech::net::unknown_function_error("#{}: unknown function", service_request.function());
+                throw tyrtech::net::unknown_function_exception("#{}: unknown function", service_request.function());
             }
         }
     }

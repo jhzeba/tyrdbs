@@ -36,12 +36,12 @@ decltype(auto) parse(const std::string_view& uri)
 
     if (unlikely(std::regex_match(uri.data(), m, __uri) == false))
     {
-        throw runtime_error("{}: malformed uri", uri);
+        throw runtime_error_exception("{}: malformed uri", uri);
     }
 
     if (unlikely(m.size() != 6))
     {
-        throw runtime_error("{}: malformed uri", uri);
+        throw runtime_error_exception("{}: malformed uri", uri);
     }
 
     std::string_view proto(m[1].first, m[1].length());
@@ -54,7 +54,7 @@ decltype(auto) parse(const std::string_view& uri)
     {
         if (unlikely(params.path.size() != 0))
         {
-            throw runtime_error("{}: malformed uri", uri);
+            throw runtime_error_exception("{}: malformed uri", uri);
         }
 
         params.proto = proto::TCP;
@@ -68,14 +68,14 @@ decltype(auto) parse(const std::string_view& uri)
 
         if (unlikely(malformed_uri == true))
         {
-            throw runtime_error("{}: malformed uri", uri);
+            throw runtime_error_exception("{}: malformed uri", uri);
         }
 
         params.proto = proto::UNIX;
     }
     else
     {
-        throw runtime_error("{}: unknown protocol", uri);
+        throw runtime_error_exception("{}: unknown protocol", uri);
     }
 
     return params;

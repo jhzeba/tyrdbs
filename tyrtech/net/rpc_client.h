@@ -47,8 +47,8 @@ public:
 
             if (unlikely(*size > buffer_size - sizeof(uint16_t)))
             {
-                throw runtime_error("{}: response message too big",
-                                    m_client->m_channel->uri());
+                throw runtime_error_exception("{}: response message too big",
+                                              m_client->m_channel->uri());
             }
 
             m_client->m_reader.read(m_buffer.data() + sizeof(uint16_t), *size);

@@ -9,8 +9,14 @@ tyrdbs_sources = [
     'slice.cpp',
     'slice_writer.cpp',
     'key_buffer.cpp',
-    'location.cpp',
-    'ushard.cpp'
+    'location.cpp'
 ]
 
 env.StaticLibrary(target='{0}/tyrdbs'.format(BUILD_DIR), source=tyrdbs_sources)
+
+
+scripts = [
+    'meta_node/build.scons'
+]
+
+env.SConscript(scripts, must_exist=1)

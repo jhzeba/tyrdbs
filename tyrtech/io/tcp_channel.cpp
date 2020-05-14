@@ -39,7 +39,7 @@ int32_t create_socket()
 
     if (unlikely(s == -1))
     {
-        throw runtime_error("socket(): {}", system_error().message);
+        throw runtime_error_exception("socket(): {}", system_error().message);
     }
 
     return s;
@@ -69,7 +69,7 @@ sockaddr_in resolve(const std::string_view& host, const std::string_view& servic
 
     if (res != 0)
     {
-        throw channel::address_not_found_error("tcp://{}:{}", host, service);
+        throw channel::address_not_found_exception("tcp://{}:{}", host, service);
     }
 
     assert(likely(sizeof(addr) == returned_addrs->ai_addrlen));
@@ -124,12 +124,12 @@ channel::channel(int32_t fd, const sockaddr_in& addr)
 
     if (unlikely(::setsockopt(m_fd, IPPROTO_TCP, TCP_NODELAY, &val, sizeof(val))) == -1)
     {
-        throw runtime_error("{}: {}", uri(), system_error().message);
+        throw runtime_error_exception("{}: {}", uri(), system_error().message);
     }
 
     if (unlikely(::setsockopt(m_fd, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val))) == -1)
     {
-        throw runtime_error("{}: {}", uri(), system_error().message);
+        throw runtime_error_exception("{}: {}", uri(), system_error().message);
     }
 }
 

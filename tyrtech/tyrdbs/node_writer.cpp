@@ -27,7 +27,7 @@ uint32_t node_writer::flush(char* sink, uint32_t sink_size)
 
     if (r == 0)
     {
-        throw runtime_error("unable to compress node");
+        throw runtime_error_exception("unable to compress node");
     }
 
     return r;

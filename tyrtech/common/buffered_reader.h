@@ -17,7 +17,7 @@ template<typename BufferType, typename SourceType = std::void_t<>>
 class buffered_reader : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(runtime_error, error);
+    DEFINE_EXCEPTION(runtime_error_exception, exception);
 
 public:
     void read(char* data, uint32_t size)
@@ -30,7 +30,7 @@ public:
 
                 if (unlikely(m_offset == m_size))
                 {
-                    throw error("no more data in source");
+                    throw exception("no more data in source");
                 }
             }
 
@@ -59,7 +59,7 @@ public:
 
             if (unlikely(m_offset == m_size))
             {
-                throw error("no more data in source");
+                throw exception("no more data in source");
             }
         }
 

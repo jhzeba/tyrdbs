@@ -21,7 +21,7 @@ env.Program(
 
 env.Program(
     target='ushard_test',
-    source=['ushard_test.cpp'],
+    source=['ushard_test.cpp', '../tyrtech/tyrdbs/meta_node/ushard.cpp'],
     LIBS=default_libs
 )
 
@@ -75,7 +75,7 @@ env.Program(
 
 env.Program(
     target='db_server',
-    source=['db_server.cpp'],
+    source=['db_server.cpp', '../tyrtech/tyrdbs/meta_node/ushard.cpp'],
     LIBS=default_libs
 )
 

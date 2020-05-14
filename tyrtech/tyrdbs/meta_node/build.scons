@@ -1,0 +1,22 @@
+Import('env')
+
+
+default_libs = [
+    'tyrdbs',
+    'net',
+    'io',
+    'gt',
+    'common',
+    'extern',
+    'uring',
+    'uuid'
+]
+
+meta_node_sources = [
+    'meta_node.cpp',
+    'ushard.cpp'
+]
+
+env.Program('meta_node',
+            source=meta_node_sources,
+            LIBS=default_libs)

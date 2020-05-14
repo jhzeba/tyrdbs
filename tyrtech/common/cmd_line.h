@@ -17,7 +17,8 @@ namespace tyrtech {
 class cmd_line : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(runtime_error, error);
+    DEFINE_EXCEPTION(runtime_error_exception, exception);
+    DEFINE_EXCEPTION(exception, format_error_exception);
 
 public:
     using glossary_t =
@@ -63,9 +64,9 @@ public:
         {
             return conv::parse<T>(std::string_view(value));
         }
-        catch (conv::format_error& e)
+        catch (conv::format_error_exception& e)
         {
-            throw error("invalid argument: {}", e.what());
+            throw format_error_exception("invalid argument: {}", e.what());
         }
     }
 

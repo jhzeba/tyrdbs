@@ -17,7 +17,7 @@ template<typename BufferType, typename SinkType = std::void_t<>>
 class buffered_writer : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(runtime_error, error);
+    DEFINE_EXCEPTION(runtime_error_exception, exception);
 
 public:
     void write(const char* data, uint32_t size)
@@ -30,7 +30,7 @@ public:
 
                 if (unlikely(m_offset == m_buffer->size()))
                 {
-                    throw error("cannot write data to sink");
+                    throw exception("cannot write data to sink");
                 }
             }
 

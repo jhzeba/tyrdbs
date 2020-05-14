@@ -21,9 +21,9 @@ void set_cpu(int32_t cpu)
 
     if (res != 0)
     {
-        throw runtime_error("pthread_setaffinity_np({}): {}",
-                            cpu,
-                            system_error(res).message);
+        throw runtime_error_exception("pthread_setaffinity_np({}): {}",
+                                      cpu,
+                                      system_error(res).message);
     }
 }
 

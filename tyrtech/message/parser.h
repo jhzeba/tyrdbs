@@ -60,7 +60,7 @@ protected:
     {
         if (unlikely(offset + min_size > parser->m_size))
         {
-            throw malformed_message_error("read offset past message size");
+            throw malformed_message_exception("read offset past message size");
         }
 
         offset += sizeof(uint16_t);
@@ -101,12 +101,12 @@ protected:
 
         if (unlikely(offset == 0))
         {
-            throw malformed_message_error("requested field not present");
+            throw malformed_message_exception("requested field not present");
         }
 
         if (unlikely(m_offset + offset > m_parser->m_size))
         {
-            throw malformed_message_error("read offset past message size");
+            throw malformed_message_exception("read offset past message size");
         }
 
         return offset + m_offset;
@@ -122,7 +122,7 @@ protected:
     {
         if (unlikely(m_offset + sizeof(uint16_t) > parser->m_size))
         {
-            throw malformed_message_error("read offset past message size");
+            throw malformed_message_exception("read offset past message size");
         }
 
         m_elements = *reinterpret_cast<const uint16_t*>(m_parser->m_buffer + m_offset);

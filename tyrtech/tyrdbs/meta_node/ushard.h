@@ -7,7 +7,7 @@
 #include <unordered_map>
 
 
-namespace tyrtech::tyrdbs {
+namespace tyrtech::tyrdbs::meta_node {
 
 
 class ushard : private disallow_copy, disallow_move

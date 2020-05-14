@@ -1,8 +1,8 @@
 #include <gt/async.h>
-#include <tyrdbs/ushard.h>
+#include <tyrdbs/meta_node/ushard.h>
 
 
-namespace tyrtech::tyrdbs {
+namespace tyrtech::tyrdbs::meta_node {
 
 
 class ushard_iterator : public iterator

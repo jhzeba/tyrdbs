@@ -5,8 +5,8 @@
 #include <gt/async.h>
 #include <gt/condition.h>
 #include <io/engine.h>
-#include <tyrdbs/ushard.h>
 #include <tyrdbs/cache.h>
+#include <tyrdbs/meta_node/ushard.h>
 
 #include <tests/stats.h>
 
@@ -16,13 +16,13 @@
 using namespace tyrtech;
 
 
-struct test_cb : public tyrdbs::ushard::meta_callback
+struct test_cb : public tyrdbs::meta_node::ushard::meta_callback
 {
-    void add(const tyrtech::tyrdbs::ushard::slice_ptr& slice) override
+    void add(const tyrdbs::meta_node::ushard::slice_ptr& slice) override
     {
     }
 
-    void remove(const tyrtech::tyrdbs::ushard::slices_t& slices) override
+    void remove(const tyrdbs::meta_node::ushard::slices_t& slices) override
     {
         for (auto&& slice : slices)
         {
@@ -33,7 +33,7 @@ struct test_cb : public tyrdbs::ushard::meta_callback
     std::vector<uint32_t> merge_requests;
     gt::condition merge_cond;
 
-    std::shared_ptr<tyrdbs::ushard> ushard;
+    std::shared_ptr<tyrdbs::meta_node::ushard> ushard;
 
     bool compact{false};
     bool exit_merge{false};
@@ -110,7 +110,7 @@ void insert(const data_set_t& data, test_cb* cb)
                    data.size() * 1000000000. / duration);
 }
 
-void verify_sequential(const data_set_t& data, tyrdbs::ushard* ushard, tests::stats* s)
+void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tests::stats* s)
 {
     auto&& db_it = ushard->begin();
     auto&& data_it = data.begin();
@@ -164,7 +164,7 @@ void verify_sequential(const data_set_t& data, tyrdbs::ushard* ushard, tests::st
     assert(db_it->next() == false);
 }
 
-void verify_range(const data_set_t& data, tyrdbs::ushard* ushard, tests::stats* s)
+void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tests::stats* s)
 {
     auto&& data_it = data.begin();
 
@@ -286,7 +286,7 @@ void test(const data_sets_t* data,
 
     test_cb cb;
 
-    cb.ushard = std::make_shared<tyrdbs::ushard>();
+    cb.ushard = std::make_shared<tyrdbs::meta_node::ushard>();
 
     gt::create_thread(merge_thread, &cb);
 

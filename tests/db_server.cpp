@@ -8,8 +8,8 @@
 #include <io/engine.h>
 #include <io/uri.h>
 #include <net/rpc_server.h>
-#include <tyrdbs/ushard.h>
 #include <tyrdbs/cache.h>
+#include <tyrdbs/meta_node/ushard.h>
 
 #include <tests/db_server_service.json.h>
 #include <tests/data.json.h>
@@ -32,7 +32,7 @@ struct impl : private disallow_copy
     {
         struct impl* impl;
 
-        tyrdbs::ushard::slices_t snapshot;
+        tyrdbs::meta_node::ushard::slices_t snapshot;
 
         context(struct impl* impl)
           : impl(impl)
@@ -69,7 +69,7 @@ struct impl : private disallow_copy
     using merge_request_t =
             std::pair<uint32_t, uint32_t>;
 
-    struct cb : public tyrdbs::ushard::meta_callback
+    struct cb : public tyrdbs::meta_node::ushard::meta_callback
     {
         uint32_t ushard;
         struct impl* impl{nullptr};
@@ -80,11 +80,11 @@ struct impl : private disallow_copy
         {
         }
 
-        void add(const tyrtech::tyrdbs::ushard::slice_ptr& slice) override
+        void add(const tyrtech::tyrdbs::meta_node::ushard::slice_ptr& slice) override
         {
         }
 
-        void remove(const tyrtech::tyrdbs::ushard::slices_t& slices) override
+        void remove(const tyrtech::tyrdbs::meta_node::ushard::slices_t& slices) override
         {
             for (auto&& slice : slices)
             {
@@ -253,7 +253,7 @@ struct impl : private disallow_copy
     {
         for (uint32_t i = 0; i < ushards_num; i++)
         {
-            ushards[i] = std::make_shared<tyrdbs::ushard>();
+            ushards[i] = std::make_shared<tyrdbs::meta_node::ushard>();
             tier_locks[i] = std::make_shared<tier_locks_t>();
         }
 
@@ -308,7 +308,7 @@ private:
     tier_locks_map tier_locks;
 
     using ushard_ptr =
-            std::shared_ptr<tyrdbs::ushard>;
+            std::shared_ptr<tyrdbs::meta_node::ushard>;
 
     using ushards_t =
             std::unordered_map<uint32_t, ushard_ptr>;

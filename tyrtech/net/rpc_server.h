@@ -75,7 +75,7 @@ private:
             {
                 remote = m_channel->accept();
             }
-            catch (io::channel::disconnected_error&)
+            catch (io::channel::disconnected_exception&)
             {
                 logger::debug("{}: server shutdown", m_channel->uri());
 
@@ -132,7 +132,7 @@ private:
                 {
                     m_service->process_message(request, &response, &ctx);
                 }
-                catch (server_error& e)
+                catch (server_error_exception& e)
                 {
                     auto error = response.add_error();
 
@@ -145,11 +145,11 @@ private:
                 remote->send_all(send_buffer.data(), builder.size(), 0);
             }
         }
-        catch (io::channel::disconnected_error&)
+        catch (io::channel::disconnected_exception&)
         {
             logger::debug("{}: disconnected", remote->uri());
         }
-        catch (message::malformed_message_error&)
+        catch (message::malformed_message_exception&)
         {
             logger::error("{}: invalid message, disconnecting...", remote->uri());
         }

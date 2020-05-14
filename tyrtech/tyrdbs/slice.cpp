@@ -186,7 +186,7 @@ slice::slice(uint64_t size, io::file&& file)
 
     if (h.signature != signature)
     {
-        throw runtime_error("invalid slice signature");
+        throw runtime_error_exception("invalid slice signature");
     }
 
     m_key_count = h.stats.key_count;

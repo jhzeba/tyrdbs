@@ -10,12 +10,12 @@
 namespace tyrtech::http {
 
 
-DEFINE_EXCEPTION(runtime_error, error);
-DEFINE_EXCEPTION(error, malformed_message_error);
-DEFINE_EXCEPTION(error, method_not_allowed_error);
-DEFINE_EXCEPTION(error, bad_request_error);
-DEFINE_EXCEPTION(error, not_found_error);
-DEFINE_EXCEPTION(error, internal_server_error);
+DEFINE_EXCEPTION(runtime_error, exception);
+DEFINE_EXCEPTION(exception, malformed_message);
+DEFINE_EXCEPTION(exception, method_not_allowed);
+DEFINE_EXCEPTION(exception, bad_request);
+DEFINE_EXCEPTION(exception, not_found);
+DEFINE_EXCEPTION(exception, internal_server_error);
 
 
 #define BAD_REQUEST tyrtech::http::bad_request_error("400 Bad Request")

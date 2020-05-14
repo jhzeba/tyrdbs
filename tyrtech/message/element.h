@@ -10,9 +10,9 @@
 namespace tyrtech::message {
 
 
-DEFINE_EXCEPTION(runtime_error, error);
-DEFINE_EXCEPTION(error, malformed_message_error);
-DEFINE_EXCEPTION(error, insufficient_space_error);
+DEFINE_EXCEPTION(runtime_error_exception, exception);
+DEFINE_EXCEPTION(exception, malformed_message_exception);
+DEFINE_EXCEPTION(exception, insufficient_space_exception);
 
 
 template<typename T>
@@ -27,7 +27,7 @@ struct integral_type
     {
         if (unlikely(builder->m_offset + size > builder->m_max_size))
         {
-            throw insufficient_space_error("target buffer too small");
+            throw insufficient_space_exception("target buffer too small");
         }
 
         std::memcpy(builder->m_buffer + builder->m_offset, &value, size);
@@ -39,7 +39,7 @@ struct integral_type
     {
         if (unlikely(offset + size > parser->m_size))
         {
-            throw malformed_message_error("invalid offset");
+            throw malformed_message_exception("invalid offset");
         }
 
         return *reinterpret_cast<const value_type*>(parser->m_buffer + offset);
@@ -61,7 +61,7 @@ struct container_type
 
         if (unlikely(builder->m_offset + sizeof(uint16_t) + size > builder->m_max_size))
         {
-            throw insufficient_space_error("target buffer too small");
+            throw insufficient_space_exception("target buffer too small");
         }
 
         std::memcpy(builder->m_buffer + builder->m_offset, &size, sizeof(size));
@@ -76,7 +76,7 @@ struct container_type
     {
         if (unlikely(offset + sizeof(uint16_t) > parser->m_size))
         {
-            throw malformed_message_error("invalid offset");
+            throw malformed_message_exception("invalid offset");
         }
 
         uint16_t size = *reinterpret_cast<const uint16_t*>(parser->m_buffer + offset);
@@ -84,7 +84,7 @@ struct container_type
 
         if (unlikely(offset + size > parser->m_size))
         {
-            throw malformed_message_error("invalid offset");
+            throw malformed_message_exception("invalid offset");
         }
 
         return value_type(parser->m_buffer + offset, size);

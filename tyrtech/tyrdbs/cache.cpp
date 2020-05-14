@@ -98,7 +98,7 @@ node_ptr load(const io::file& reader, uint64_t location)
 
     if (crc32c_update(0, data, node_size) != crc32c)
     {
-        throw runtime_error("invalid node crc32c");
+        throw runtime_error_exception("invalid node crc32c");
     }
 
     auto node = std::make_shared<tyrdbs::node>();

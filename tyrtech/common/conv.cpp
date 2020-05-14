@@ -15,7 +15,7 @@ uint16_t parse(const std::string_view& value)
 
     if (res.ptr != value.end() || res.ec != std::errc())
     {
-        throw format_error("can't convert '{}' to u16", value);
+        throw format_error_exception("can't convert '{}' to u16", value);
     }
 
     return parsed_value;
@@ -30,7 +30,7 @@ uint32_t parse(const std::string_view& value)
 
     if (res.ptr != value.end() || res.ec != std::errc())
     {
-        throw format_error("can't convert '{}' to u32", value);
+        throw format_error_exception("can't convert '{}' to u32", value);
     }
 
     return parsed_value;
@@ -45,7 +45,7 @@ uint64_t parse(const std::string_view& value)
 
     if (res.ptr != value.end() || res.ec != std::errc())
     {
-        throw format_error("can't convert '{}' to u64", value);
+        throw format_error_exception("can't convert '{}' to u64", value);
     }
 
     return parsed_value;

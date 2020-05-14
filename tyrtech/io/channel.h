@@ -11,12 +11,12 @@ namespace tyrtech::io {
 class channel : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(io_error, error);
-    DEFINE_EXCEPTION(error, disconnected_error);
-    DEFINE_EXCEPTION(error, timeout_error);
-    DEFINE_EXCEPTION(error, unable_to_connect_error);
-    DEFINE_EXCEPTION(error, address_in_use_error);
-    DEFINE_EXCEPTION(error, address_not_found_error);
+    DEFINE_EXCEPTION(io_error_exception, exception);
+    DEFINE_EXCEPTION(exception, disconnected_exception);
+    DEFINE_EXCEPTION(exception, timeout_exception);
+    DEFINE_EXCEPTION(exception, unable_to_connect_exception);
+    DEFINE_EXCEPTION(exception, address_in_use_exception);
+    DEFINE_EXCEPTION(exception, address_not_found_exception);
 
 public:
     uint32_t recv(char* data, uint32_t size, uint64_t timeout);

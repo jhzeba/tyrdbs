@@ -139,7 +139,7 @@ void slice_writer::flush()
 
     if (m_last_eor == false)
     {
-        throw invalid_data_error("data not complete");
+        throw invalid_data_exception("data not complete");
     }
 
     uint64_t location = store(&m_node, true);
@@ -196,12 +196,12 @@ bool slice_writer::check(const std::string_view& key,
 {
     if (key.size() == 0)
     {
-        throw invalid_data_error("key of zero length not allowed");
+        throw invalid_data_exception("key of zero length not allowed");
     }
 
     if (key.size() >= node::max_key_size)
     {
-        throw invalid_data_error("maximum key size exceded");
+        throw invalid_data_exception("maximum key size exceded");
     }
 
     int32_t cmp = key.compare(m_last_key.data());
@@ -210,20 +210,20 @@ bool slice_writer::check(const std::string_view& key,
     {
         if (cmp < 0)
         {
-            throw invalid_data_error("input keys not sorted");
+            throw invalid_data_exception("input keys not sorted");
         }
         else if (cmp == 0)
         {
             if (m_last_eor == true || deleted == true)
             {
-                throw invalid_data_error("duplicate keys");
+                throw invalid_data_exception("duplicate keys");
             }
         }
         else
         {
             if (m_last_eor == false)
             {
-                throw invalid_data_error("key eor mismatch");
+                throw invalid_data_exception("key eor mismatch");
             }
         }
     }
@@ -232,7 +232,7 @@ bool slice_writer::check(const std::string_view& key,
     {
         if (eor == false || value.size() != 0)
         {
-            throw invalid_data_error("invalid combination of key attributes");
+            throw invalid_data_exception("invalid combination of key attributes");
         }
     }
 

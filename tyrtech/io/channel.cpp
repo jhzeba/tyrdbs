@@ -36,7 +36,7 @@ uint32_t channel::recv(char* data, uint32_t size, uint64_t timeout)
 
     if (unlikely(res == 0))
     {
-        throw disconnected_error("{}", uri());
+        throw disconnected_exception("{}", uri());
     }
 
     auto e = system_error();
@@ -45,15 +45,15 @@ uint32_t channel::recv(char* data, uint32_t size, uint64_t timeout)
     {
         case ECONNRESET:
         {
-            throw disconnected_error("{}", uri());
+            throw disconnected_exception("{}", uri());
         }
         case ECANCELED:
         {
-            throw timeout_error("{}", uri());
+            throw timeout_exception("{}", uri());
         }
         default:
         {
-            throw runtime_error("{}: {}", uri(), e.message);
+            throw runtime_error_exception("{}: {}", uri(), e.message);
         }
     }
 }
@@ -71,7 +71,7 @@ uint32_t channel::send(const char* data, uint32_t size, uint64_t timeout)
 
     if (unlikely(res == 0))
     {
-        throw disconnected_error("{}", uri());
+        throw disconnected_exception("{}", uri());
     }
 
     auto e = system_error();
@@ -80,15 +80,15 @@ uint32_t channel::send(const char* data, uint32_t size, uint64_t timeout)
     {
         case ECONNRESET:
         {
-            throw disconnected_error("{}", uri());
+            throw disconnected_exception("{}", uri());
         }
         case ECANCELED:
         {
-            throw timeout_error("{}", uri());
+            throw timeout_exception("{}", uri());
         }
         default:
         {
-            throw runtime_error("{}: {}", uri(), e.message);
+            throw runtime_error_exception("{}: {}", uri(), e.message);
         }
     }
 }
@@ -168,15 +168,15 @@ void channel::connect(const void* address, uint32_t address_size, uint64_t timeo
         case ECONNRESET:
         case ENOENT:
         {
-            throw unable_to_connect_error("{}", uri());
+            throw unable_to_connect_exception("{}", uri());
         }
         case ECANCELED:
         {
-            throw timeout_error("{}", uri());
+            throw timeout_exception("{}", uri());
         }
         default:
         {
-            throw runtime_error("{}: {}", uri(), e.message);
+            throw runtime_error_exception("{}: {}", uri(), e.message);
         }
     }
 }
@@ -191,17 +191,17 @@ void channel::listen(const void* address, uint32_t address_size)
 
         if (error.code == EADDRINUSE)
         {
-            throw address_in_use_error("{}: {}", uri(), error.message);
+            throw address_in_use_exception("{}: {}", uri(), error.message);
         }
         else
         {
-            throw runtime_error("{}: {}", uri(), error.message);
+            throw runtime_error_exception("{}: {}", uri(), error.message);
         }
     }
 
     if (unlikely(::listen(m_fd, 1024) == -1))
     {
-        throw runtime_error("{}: {}", uri(), system_error().message);
+        throw runtime_error_exception("{}: {}", uri(), system_error().message);
     }
 }
 
@@ -225,11 +225,11 @@ void channel::accept(int32_t* fd, void* address, uint32_t address_size)
     {
         case EINVAL:
         {
-            throw disconnected_error("{}", uri());
+            throw disconnected_exception("{}", uri());
         }
         default:
         {
-            throw runtime_error("{}: {}", uri(), e.message);
+            throw runtime_error_exception("{}: {}", uri(), e.message);
         }
     }
 }

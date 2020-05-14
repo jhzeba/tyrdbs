@@ -518,7 +518,7 @@ def module_generator(module_name, module, namespace):
 {% endfor %}
 
 {% for exception in exceptions %}
-DEFINE_SERVER_EXCEPTION({{loop.index}}, tyrtech::net::server_error, {{exception}});
+DEFINE_SERVER_EXCEPTION({{loop.index}}, tyrtech::net::server_error_exception, {{exception}});
 {% if loop.last == True %}{{'\n'}}{% endif %}
 {% endfor %}
 void throw_module_exception(const tyrtech::net::service::error_parser& error)
@@ -527,11 +527,11 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
     {
         case -1:
         {
-            throw tyrtech::net::unknown_module_error("{}", error.message());
+            throw tyrtech::net::unknown_module_exception("{}", error.message());
         }
         case -2:
         {
-            throw tyrtech::net::unknown_function_error("{}", error.message());
+            throw tyrtech::net::unknown_function_exception("{}", error.message());
         }
 {% for exception in exceptions %}
         case {{loop.index}}:
@@ -541,7 +541,7 @@ void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {% endfor %}
         default:
         {
-            throw tyrtech::net::unknown_exception_error("#{}: unknown exception", error.code());
+            throw tyrtech::net::unknown_exception("#{}: unknown exception", error.code());
         }
     }
 }
@@ -588,7 +588,7 @@ struct module : private tyrtech::disallow_copy
 {% endfor %}
             default:
             {
-                throw tyrtech::net::unknown_function_error("#{}: unknown function", service_request.function());
+                throw tyrtech::net::unknown_function_exception("#{}: unknown function", service_request.function());
             }
         }
     }
@@ -757,7 +757,7 @@ struct {{service.name}} : private tyrtech::disallow_copy
 {% endfor %}
             default:
             {
-                throw tyrtech::net::unknown_module_error("#{}: unknown module", service_request.function());
+                throw tyrtech::net::unknown_module_exception("#{}: unknown module", service_request.function());
             }
         }
     }

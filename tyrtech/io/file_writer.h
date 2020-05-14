@@ -10,7 +10,7 @@ namespace tyrtech::io {
 class file_writer : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(file::error, error);
+    DEFINE_EXCEPTION(file::exception, exception);
 
 public:
     uint32_t write(const char* data, uint32_t size);

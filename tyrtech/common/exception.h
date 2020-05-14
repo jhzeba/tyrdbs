@@ -40,7 +40,7 @@ private:
     }
 
 
-DEFINE_EXCEPTION(exception, runtime_error);
-DEFINE_EXCEPTION(exception, io_error);
+DEFINE_EXCEPTION(exception, runtime_error_exception);
+DEFINE_EXCEPTION(exception, io_error_exception);
 
 }

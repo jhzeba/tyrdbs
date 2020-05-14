@@ -144,8 +144,8 @@ int main(int argc, const char* argv[])
     }
     else
     {
-        throw cmd_line::error("{}: invalid argument value",
-                              cmd.get<std::string_view>("operation"));
+        throw cmd_line::exception("{}: invalid argument value",
+                                  cmd.get<std::string_view>("operation"));
     }
 
     set_cpu(cmd.get<uint32_t>("cpu"));

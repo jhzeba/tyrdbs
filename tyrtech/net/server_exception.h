@@ -7,7 +7,7 @@
 namespace tyrtech::net {
 
 
-class server_error : public runtime_error
+class server_error_exception : public runtime_error_exception
 {
 public:
     int16_t code() const noexcept
@@ -17,8 +17,8 @@ public:
 
 public:
     template<typename... Arguments>
-    server_error(int16_t code, Arguments&&... arguments)
-      : runtime_error(std::forward<Arguments>(arguments)...)
+    server_error_exception(int16_t code, Arguments&&... arguments)
+      : runtime_error_exception(std::forward<Arguments>(arguments)...)
       , m_code(code)
     {
     }
@@ -40,8 +40,8 @@ private:
     }
 
 
-DEFINE_SERVER_EXCEPTION(-1, server_error, unknown_module_error);
-DEFINE_SERVER_EXCEPTION(-2, server_error, unknown_function_error);
-DEFINE_SERVER_EXCEPTION(-3, server_error, unknown_exception_error);
+DEFINE_SERVER_EXCEPTION(-1, server_error_exception, unknown_module_exception);
+DEFINE_SERVER_EXCEPTION(-2, server_error_exception, unknown_function_exception);
+DEFINE_SERVER_EXCEPTION(-3, server_error_exception, unknown_exception);
 
 }

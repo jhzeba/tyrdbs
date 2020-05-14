@@ -14,7 +14,7 @@ namespace tyrtech::io {
 class file : private disallow_copy
 {
 public:
-    DEFINE_EXCEPTION(io_error, error);
+    DEFINE_EXCEPTION(io_error_exception, exception);
 
 public:
     enum class access

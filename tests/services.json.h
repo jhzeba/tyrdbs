@@ -72,7 +72,7 @@ struct service1 : private tyrtech::disallow_copy
             }
             default:
             {
-                throw tyrtech::net::unknown_module_error("#{}: unknown module", service_request.function());
+                throw tyrtech::net::unknown_module_exception("#{}: unknown module", service_request.function());
             }
         }
     }
