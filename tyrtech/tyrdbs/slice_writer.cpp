@@ -1,5 +1,4 @@
 #include <tyrdbs/slice_writer.h>
-#include <tyrdbs/cache.h>
 #include <tyrdbs/location.h>
 
 #include <crc32c.h>
@@ -177,6 +176,11 @@ uint64_t slice_writer::commit()
     return m_writer.offset();
 }
 
+std::string_view slice_writer::path() const
+{
+    return m_file.path();
+}
+
 slice_writer::~slice_writer()
 {
     if (m_commited == false)
@@ -265,8 +269,6 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     }
 
     m_last_node = node->reset();
-
-    cache::set(m_slice_ndx, location, m_last_node);
 
     m_header.stats.compressed_size += size;
     m_header.stats.uncompressed_size += node::node_size;

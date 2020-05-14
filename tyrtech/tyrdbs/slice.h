@@ -37,25 +37,10 @@ public:
 
 public:
     template<typename... Arguments>
-    slice(uint32_t size, Arguments&&... arguments)
-      : m_file(io::file::open(io::file::access::read_only,
-                              std::forward<Arguments>(arguments)...))
+    slice(uint64_t size, Arguments&&... arguments)
+      : slice(size, io::file::open(io::file::access::read_only,
+                                   std::forward<Arguments>(arguments)...))
     {
-        header h;
-
-        m_file.pread(size - node::page_size,
-                     reinterpret_cast<char*>(&h),
-                     sizeof(h));
-
-        if (h.signature != signature)
-        {
-            throw runtime_error("invalid slice signature");
-        }
-
-        m_key_count = h.stats.key_count;
-
-        m_root = h.root;
-        m_first_node_size = h.first_node_size;
     }
 
     slice() = default;
@@ -74,7 +59,7 @@ public:
     } __attribute__ ((packed));
 
 private:
-    uint64_t m_slice_ndx{static_cast<uint64_t>(-1)};
+    uint64_t m_cache_id{static_cast<uint64_t>(-1)};
 
     io::file m_file;
 
@@ -84,6 +69,9 @@ private:
     uint64_t m_first_node_size{0};
 
     bool m_unlink{false};
+
+private:
+    slice(uint64_t size, io::file&& file);
 
 private:
     uint64_t find_node_for(uint64_t location,

@@ -17,10 +17,10 @@ public:
     uint64_t idx() const override;
 
 public:
-    ushard_iterator(ushard::slices_t&& slices,
+    ushard_iterator(ushard::slices_t slices,
                     const std::string_view& min_key,
                     const std::string_view& max_key);
-    ushard_iterator(ushard::slices_t&& slices);
+    ushard_iterator(ushard::slices_t slices);
 
 private:
     using element_t =
@@ -133,7 +133,7 @@ uint64_t ushard_iterator::idx() const
     return m_elements.back().second->idx();
 }
 
-ushard_iterator::ushard_iterator(ushard::slices_t&& slices,
+ushard_iterator::ushard_iterator(ushard::slices_t slices,
                                  const std::string_view& min_key,
                                  const std::string_view& max_key)
 {
@@ -177,7 +177,7 @@ ushard_iterator::ushard_iterator(ushard::slices_t&& slices,
     }
 }
 
-ushard_iterator::ushard_iterator(ushard::slices_t&& slices)
+ushard_iterator::ushard_iterator(ushard::slices_t slices)
 {
     m_elements.reserve(slices.size());
 
@@ -255,9 +255,9 @@ void ushard::add(slice_ptr slice, meta_callback* cb)
     add(std::move(slice), cb, true);
 }
 
-uint64_t ushard::merge(uint32_t tier, meta_callback* cb)
+uint64_t ushard::merge(slice_writer* target, uint32_t tier, meta_callback* cb)
 {
-    auto&& tier_slices = get_slices_for(tier);
+    auto tier_slices = get_slices_for(tier);
     uint32_t count = tier_slices.size();
 
     if (count <= max_slices_per_tier)
@@ -265,49 +265,51 @@ uint64_t ushard::merge(uint32_t tier, meta_callback* cb)
         return 0;
     }
 
-    cb->remove(tier_slices);
-
     auto source_key_count = key_count(tier_slices);
 
-    slice_writer target;
-    ushard_iterator it(std::move(tier_slices));
+    ushard_iterator it(tier_slices);
 
-    target.add(&it, false);
-    target.flush();
+    target->add(&it, false);
+    target->flush();
 
-    add(target.commit(), cb);
+    auto target_size = target->commit();
+
+    add(std::make_shared<slice>(target_size, "{}", target->path()), cb);
     remove_from(tier, count, cb);
+
+    cb->remove(tier_slices);
 
     return source_key_count;
 }
 
-uint64_t ushard::compact(meta_callback* cb)
+uint64_t ushard::compact(slice_writer* target, meta_callback* cb)
 {
-    auto&& slices = get_slices();
+    auto slices = get_slices();
 
     if (slices.size() < 2)
     {
         return 0;
     }
 
-    cb->remove(slices);
-
     auto source_key_count = key_count(slices);
 
     tier_map_t tier_map_checkpoint = m_tier_map;
 
-    slice_writer target;
-    ushard_iterator it(std::move(slices));
+    ushard_iterator it(slices);
 
-    target.add(&it, true);
-    target.flush();
+    target->add(&it, true);
+    target->flush();
 
-    add(target.commit(), cb);
+    auto target_size = target->commit();
+
+    add(std::make_shared<slice>(target_size, "{}", target->path()), cb);
 
     for (auto&& it : tier_map_checkpoint)
     {
         remove_from(it.first, it.second.size(), cb);
     }
+
+    cb->remove(slices);
 
     return source_key_count;
 }
@@ -353,16 +355,7 @@ uint32_t ushard::tier_of(const slice_ptr& slice)
 
 ushard::slices_t ushard::get_slices_for(uint32_t tier)
 {
-    auto&& tier_slices = m_tier_map[tier];
-    slices_t slices;
-
-    slices.reserve(tier_slices.size());
-
-    std::copy(tier_slices.begin(),
-              tier_slices.end(),
-              std::back_inserter(slices));
-
-    return slices;
+    return m_tier_map[tier];
 }
 
 uint64_t ushard::key_count(const slices_t& slices)
@@ -403,6 +396,7 @@ void ushard::add(slice_ptr slice, meta_callback* cb, bool use_add_callback)
 void ushard::remove_from(uint32_t tier, uint32_t count, meta_callback* cb)
 {
     auto& tier_slices = m_tier_map[tier];
+
     tier_slices.erase(tier_slices.begin(), tier_slices.begin() + count);
 
     if (tier_slices.size() > max_slices_per_tier)

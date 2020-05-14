@@ -154,7 +154,7 @@ int main(int argc, const char* argv[])
     io::initialize(4096);
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 
-    auto f = io::file::open(io::file::access::read, cmd.get<std::string_view>("file"));
+    auto f = io::file::open(io::file::access::read_only, cmd.get<std::string_view>("file"));
     /*
     auto stat = f.stat();
 

@@ -30,11 +30,12 @@ public:
     void flush();
     uint64_t commit();
 
+    std::string_view path() const;
+
 public:
     template<typename... Arguments>
     slice_writer(Arguments&&... arguments)
-      : m_slice_ndx(-1)//storage::new_cache_id())
-      , m_file(io::file::create(std::forward<Arguments>(arguments)...))
+      : m_file(io::file::create(std::forward<Arguments>(arguments)...))
     {
     }
 
@@ -76,8 +77,6 @@ private:
             buffered_writer<buffer_t, io::file_writer>;
 
 private:
-    uint64_t m_slice_ndx{static_cast<uint64_t>(-1)};
-
     key_buffer m_first_key;
     key_buffer m_last_key;
 

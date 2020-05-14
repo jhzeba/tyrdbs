@@ -13,6 +13,8 @@ std::string_view uuid::str(char* buffer, uint32_t size)
     assert(likely(size >= 37));
 
     uuid_unparse_lower(m_uuid, buffer);
+    buffer[36] = 0;
+
     return std::string_view(buffer, 36);
 }
 

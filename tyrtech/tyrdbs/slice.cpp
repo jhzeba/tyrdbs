@@ -11,6 +11,9 @@
 namespace tyrtech::tyrdbs {
 
 
+static thread_local uint64_t __cache_id{0};
+
+
 class slice_iterator : public iterator
 {
 public:
@@ -171,6 +174,27 @@ uint64_t slice::key_count() const
     return m_key_count;
 }
 
+slice::slice(uint64_t size, io::file&& file)
+  : m_cache_id(__cache_id++)
+  , m_file(std::move(file))
+{
+    header h;
+
+    m_file.pread(size - node::page_size,
+                 reinterpret_cast<char*>(&h),
+                 sizeof(h));
+
+    if (h.signature != signature)
+    {
+        throw runtime_error("invalid slice signature");
+    }
+
+    m_key_count = h.stats.key_count;
+
+    m_root = h.root;
+    m_first_node_size = h.first_node_size;
+}
+
 slice::~slice()
 {
     if (m_unlink == true)
@@ -181,7 +205,7 @@ slice::~slice()
 
 cache::node_ptr slice::load(uint64_t location) const
 {
-    return cache::get(m_file, m_slice_ndx, location);
+    return cache::get(m_file, m_cache_id, location);
 }
 
 uint64_t slice::find_node_for(uint64_t location,

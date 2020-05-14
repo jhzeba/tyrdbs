@@ -1,8 +1,10 @@
 #include <common/cmd_line.h>
 #include <common/cpu_sched.h>
 #include <common/ring_queue.h>
+#include <common/uuid.h>
 #include <gt/engine.h>
 #include <gt/async.h>
+#include <gt/condition.h>
 #include <io/engine.h>
 #include <io/uri.h>
 #include <net/rpc_server.h>
@@ -10,9 +12,7 @@
 #include <tyrdbs/cache.h>
 
 #include <tests/db_server_service.json.h>
-
 #include <tests/data.json.h>
-#include <tests/snapshot.json.h>
 
 #include <crc32c.h>
 
@@ -117,7 +117,10 @@ struct impl : private disallow_copy
                 auto&& ushard = ushards[req.first];
                 cb cb(req.first, this);
 
-                ushard->merge(req.second, &cb);
+                char buff[37];
+                tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
+
+                ushard->merge(&w, req.second, &cb);
 
                 tier_locks[req.first]->erase(req.second);
 
@@ -149,11 +152,6 @@ struct impl : private disallow_copy
     {
         if (request.has_handle() == false)
         {
-            while (tyrdbs::slice::count() > max_slices)
-            {
-                gt::yield();
-            }
-
             writer w;
             w.idx = idx++;
 
@@ -179,7 +177,10 @@ struct impl : private disallow_copy
         {
             cb cb(slice.first, this);
 
-            ushards[slice.first]->add(slice.second->commit(), &cb);
+            auto size = slice.second->commit();
+            auto path = slice.second->path();
+
+            ushards[slice.first]->add(std::make_shared<tyrdbs::slice>(size, path), &cb);
         }
 
         writers.erase(request.handle());
@@ -239,30 +240,6 @@ struct impl : private disallow_copy
         readers.erase(request.handle());
     }
 
-    void snapshot(const snapshot::request_parser_t& request,
-                  snapshot::response_builder_t* response,
-                  context* ctx)
-    {
-        auto& ushard = ushards[request.ushard()];
-        ctx->snapshot = ushard->get_slices();
-
-        auto&& snapshot = tests::snapshot_builder(response->add_snapshot());
-        snapshot.add_path("");//storage::path());
-
-        auto&& slices = snapshot.add_slices();
-
-        for (auto&& c : ctx->snapshot)
-        {
-            auto&& slice = slices.add_value();
-            auto&& extents = slice.add_extents();
-
-            for (auto&& e : c->extents())
-            {
-                extents.add_value(e);
-            }
-        }
-    }
-
     void print_stats()
     {
         /*
@@ -272,10 +249,7 @@ struct impl : private disallow_copy
         */
     }
 
-    impl(uint32_t merge_threads,
-         uint32_t ushards_num,
-         uint32_t max_slices)
-      : max_slices(max_slices)
+    impl(uint32_t merge_threads, uint32_t ushards_num)
     {
         for (uint32_t i = 0; i < ushards_num; i++)
         {
@@ -313,8 +287,6 @@ private:
 
     using readers_t =
             std::unordered_map<uint64_t, reader>;
-
-    uint32_t max_slices{0};
 
     uint64_t idx{0};
 
@@ -518,13 +490,6 @@ int main(int argc, const char* argv[])
                   "16",
                   {"number of ushards to use (default is 16)"});
 
-    cmd.add_param("max-slices",
-                  nullptr,
-                  "max-slices",
-                  "num",
-                  "4096",
-                  {"maximum number of slices allowed (default is 4096)"});
-
     cmd.add_param("cache-bits",
                   nullptr,
                   "cache-bits",
@@ -551,8 +516,7 @@ int main(int argc, const char* argv[])
     tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
     module::impl impl(cmd.get<uint32_t>("merge-threads"),
-                      cmd.get<uint32_t>("ushards"),
-                      cmd.get<uint32_t>("max-slices"));
+                      cmd.get<uint32_t>("ushards"));
 
     db_server_service_t srv(&impl);
 

@@ -176,6 +176,7 @@ file& file::operator=(file&& other)
     other.m_fd = -1;
 
     std::memcpy(m_path, other.m_path, other.m_path_view.size());
+    m_path[other.m_path_view.size()] = 0;
     other.m_path[0] = 0;
 
     m_path_view = std::string_view(m_path, other.m_path_view.size());

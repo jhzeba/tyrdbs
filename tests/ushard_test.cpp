@@ -1,6 +1,8 @@
 #include <common/cmd_line.h>
 #include <common/cpu_sched.h>
+#include <common/uuid.h>
 #include <gt/engine.h>
+#include <gt/async.h>
 #include <gt/condition.h>
 #include <io/engine.h>
 #include <tyrdbs/ushard.h>
@@ -81,7 +83,8 @@ using data_sets_t =
 
 void insert(const data_set_t& data, test_cb* cb)
 {
-    tyrdbs::slice_writer w;
+    char buff[37];
+    tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
 
     auto t1 = clock::now();
 
@@ -93,7 +96,9 @@ void insert(const data_set_t& data, test_cb* cb)
 
     w.flush();
 
-    cb->ushard->add(w.commit(), cb);
+    auto size = w.commit();
+
+    cb->ushard->add(std::make_shared<tyrdbs::slice>(size, w.path()), cb);
 
     auto t2 = clock::now();
 
@@ -215,8 +220,11 @@ void merge_thread(test_cb* cb)
             uint32_t tier = cb->merge_requests[0];
             cb->merge_requests.erase(cb->merge_requests.begin());
 
+            char buff[37];
+            tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
+
             auto t1 = clock::now();
-            uint64_t merged_keys = cb->ushard->merge(tier, cb);
+            uint64_t merged_keys = cb->ushard->merge(&w, tier, cb);
             auto t2 = clock::now();
 
             if (merged_keys != 0)
@@ -246,8 +254,11 @@ void merge_thread(test_cb* cb)
 
     if (cb->compact == true)
     {
+        char buff[37];
+        tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
+
         auto t1 = clock::now();
-        uint64_t compacted_keys = cb->ushard->compact(cb);
+        uint64_t compacted_keys = cb->ushard->compact(&w, cb);
         auto t2 = clock::now();
 
         if (compacted_keys != 0)
@@ -449,6 +460,7 @@ int main(int argc, const char* argv[])
     assert(crc32c_initialize() == true);
 
     gt::initialize();
+    gt::async::initialize();
     io::initialize(4096);
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 

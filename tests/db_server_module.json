@@ -66,19 +66,6 @@
                 "response":
                 {
                 }
-            },
-            "snapshot":
-            {
-                "id": 6,
-                "request":
-                {
-                    "collection": "string",
-                    "ushard": "uint32"
-                },
-                "response":
-                {
-                    "snapshot": "template"
-                }
             }
         }
     }

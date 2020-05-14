@@ -456,105 +456,6 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
 
 }
 
-namespace messages::snapshot {
-
-
-struct request_builder final : public tyrtech::message::struct_builder<2, 0>
-{
-    request_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    void add_collection(const std::string_view& value)
-    {
-        set_offset<0>();
-        struct_builder<2, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t collection_bytes_required()
-    {
-        return tyrtech::message::element<std::string_view>::size;
-    }
-
-    void add_ushard(const uint32_t& value)
-    {
-        set_offset<1>();
-        struct_builder<2, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t ushard_bytes_required()
-    {
-        return tyrtech::message::element<uint32_t>::size;
-    }
-};
-
-struct request_parser final : public tyrtech::message::struct_parser<2, 0>
-{
-    request_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    request_parser() = default;
-
-    bool has_collection() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) collection() const
-    {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<0>());
-    }
-
-    bool has_ushard() const
-    {
-        return has_offset<1>();
-    }
-
-    decltype(auto) ushard() const
-    {
-        return tyrtech::message::element<uint32_t>().parse(m_parser, offset<1>());
-    }
-};
-
-struct response_builder final : public tyrtech::message::struct_builder<1, 0>
-{
-    response_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    decltype(auto) add_snapshot()
-    {
-        set_offset<0>();
-        return m_builder;
-    }
-};
-
-struct response_parser final : public tyrtech::message::struct_parser<1, 0>
-{
-    response_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    response_parser() = default;
-
-    bool has_snapshot() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) snapshot() const
-    {
-        return offset<0>();
-    }
-};
-
-}
-
 void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
@@ -691,29 +592,6 @@ struct abort_fetch
     }
 };
 
-struct snapshot
-{
-    static constexpr uint16_t id{6};
-    static constexpr uint16_t module_id{1};
-
-    using request_builder_t =
-            messages::snapshot::request_builder;
-
-    using request_parser_t =
-            messages::snapshot::request_parser;
-
-    using response_builder_t =
-            messages::snapshot::response_builder;
-
-    using response_parser_t =
-            messages::snapshot::response_parser;
-
-    static void throw_exception(const tyrtech::net::service::error_parser& error)
-    {
-        throw_module_exception(error);
-    }
-};
-
 template<typename Implementation>
 struct module : private tyrtech::disallow_copy
 {
@@ -807,22 +685,6 @@ struct module : private tyrtech::disallow_copy
                 response_builder_t response(service_response->add_message());
 
                 impl->abort_fetch(request, &response, ctx);
-
-                break;
-            }
-            case snapshot::id:
-            {
-                using request_parser_t =
-                        typename snapshot::request_parser_t;
-
-                using response_builder_t =
-                        typename snapshot::response_builder_t;
-
-                request_parser_t request(service_request.get_parser(),
-                                         service_request.message());
-                response_builder_t response(service_response->add_message());
-
-                impl->snapshot(request, &response, ctx);
 
                 break;
             }

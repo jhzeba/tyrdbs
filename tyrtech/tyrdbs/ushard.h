@@ -40,8 +40,8 @@ public:
 
     void add(slice_ptr slice, meta_callback* cb);
 
-    uint64_t merge(uint32_t tier, meta_callback* cb);
-    uint64_t compact(meta_callback* cb);
+    uint64_t merge(slice_writer* target, uint32_t tier, meta_callback* cb);
+    uint64_t compact(slice_writer* target, meta_callback* cb);
 
     void drop();
 

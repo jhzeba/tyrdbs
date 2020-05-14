@@ -20,12 +20,6 @@ env.Program(
 )
 
 env.Program(
-    target='slice_test',
-    source=['slice_test.cpp'],
-    LIBS=default_libs
-)
-"""
-env.Program(
     target='ushard_test',
     source=['ushard_test.cpp'],
     LIBS=default_libs
@@ -52,12 +46,6 @@ env.Program(
 env.Program(
     target='read_test',
     source=['read_test.cpp'],
-    LIBS=default_libs
-)
-
-env.Program(
-    target='collection_test',
-    source=['collection_test.cpp'],
     LIBS=default_libs
 )
 
@@ -115,12 +103,6 @@ env.Program(
     LIBS=default_libs
 )
 
-env.Program(
-    target='db_dump',
-    source=['db_dump.cpp'],
-    LIBS=default_libs
-)
-"""
 scripts = [
 ]
 
