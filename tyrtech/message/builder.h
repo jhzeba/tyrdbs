@@ -2,10 +2,12 @@
 
 
 #include <common/disallow_copy.h>
+#include <common/branch_prediction.h>
 #include <message/element.h>
 
 #include <memory>
 #include <cstdint>
+#include <cassert>
 
 
 namespace tyrtech::message {

@@ -7,6 +7,7 @@
 #include <io/file.h>
 #include <io/channel.h>
 #include <tyrdbs/cache.h>
+#include <tyrdbs/meta_node/service.h>
 
 #include <crc32c.h>
 
@@ -53,19 +54,19 @@ int main(int argc, const char* argv[])
                   "2",
                   {"number of merge threads to use (default is 2)"});
 
-    cmd.add_param("ushards",
-                  nullptr,
-                  "ushards",
-                  "num",
-                  "16",
-                  {"number of ushards to use (default is 16)"});
-
     cmd.add_param("cache-bits",
                   nullptr,
                   "cache-bits",
                   "bits",
                   "12",
                   {"cache size expressed as 2^bits (default is 12)"});
+
+    cmd.add_param("ushards",
+                  nullptr,
+                  "ushards",
+                  "num",
+                  "16",
+                  {"number of ushards to use (default is 16)"});
 
     try
     {
@@ -80,11 +81,15 @@ int main(int argc, const char* argv[])
 
         gt::initialize();
         gt::async::initialize();
-        io::initialize(4096);
+
+        io::initialize(cmd.get<uint32_t>("iouring-queue-depth"));
         io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
         io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
         tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
+
+        gt::create_thread(tyrdbs::meta_node::service_thread,
+                          cmd.get<uint32_t>("ushards"));
 
         gt::run();
     }

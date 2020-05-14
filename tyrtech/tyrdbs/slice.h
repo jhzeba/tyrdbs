@@ -32,6 +32,8 @@ public:
 
     uint64_t key_count() const;
 
+    void set_tid(uint64_t tid);
+
 public:
     static uint64_t count();
 
@@ -67,6 +69,8 @@ private:
 
     uint64_t m_root{static_cast<uint64_t>(-1)};
     uint64_t m_first_node_size{0};
+
+    uint64_t m_tid{0};
 
     bool m_unlink{false};
 

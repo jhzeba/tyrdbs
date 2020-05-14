@@ -65,7 +65,7 @@ jobs::jobs(jobs_t::entry_pool_t* entry_pool)
 }
 
 
-thread_local std::unique_ptr<jobs_t::entry_pool_t> __entry_pool;
+static thread_local std::unique_ptr<jobs_t::entry_pool_t> __entry_pool;
 
 
 void initialize()

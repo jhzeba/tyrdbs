@@ -65,17 +65,15 @@ struct thread_data
 };
 
 
+uint32_t tid{1};
 std::string string_storage;
 
 
 using string_t =
         std::pair<uint64_t, uint16_t>;
 
-using data_point_t =
-        std::pair<string_t, uint64_t>;
-
 using data_set_t =
-        std::vector<data_point_t>;
+        std::vector<string_t>;
 
 using data_sets_t =
         std::vector<data_set_t>;
@@ -90,15 +88,16 @@ void insert(const data_set_t& data, test_cb* cb)
 
     for (auto&& it : data)
     {
-        std::string_view key(string_storage.data() + it.first.first, it.first.second);
-        w.add(key, key, true, false, it.second);
+        std::string_view key(string_storage.data() + it.first, it.second);
+        w.add(key, key, true, false);
     }
 
     w.flush();
 
-    auto size = w.commit();
+    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), "{}", w.path());
+    slice->set_tid(tid++);
 
-    cb->ushard->add(std::make_shared<tyrdbs::slice>(size, w.path()), cb);
+    cb->ushard->add(std::move(slice), cb);
 
     auto t2 = clock::now();
 
@@ -121,8 +120,8 @@ void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard
 
     while (data_it != data.end())
     {
-        std::string_view key(string_storage.data() + data_it->first.first,
-                             data_it->first.second);
+        std::string_view key(string_storage.data() + data_it->first,
+                             data_it->second);
 
         {
             auto sw = s->stopwatch();
@@ -133,7 +132,7 @@ void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard
         {
             assert(db_it->key().compare(key) == 0);
             assert(db_it->deleted() == false);
-            assert(db_it->idx() == data_it->second);
+            assert(db_it->tid() != 0);
 
             auto&& value_part = db_it->value();
             value.append(value_part.data(), value_part.size());
@@ -172,8 +171,8 @@ void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tes
 
     while (data_it != data.end())
     {
-        std::string_view key(string_storage.data() + data_it->first.first,
-                             data_it->first.second);
+        std::string_view key(string_storage.data() + data_it->first,
+                             data_it->second);
 
         std::unique_ptr<tyrdbs::iterator> db_it;
 
@@ -188,7 +187,7 @@ void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tes
         {
             assert(db_it->key().compare(key) == 0);
             assert(db_it->deleted() == false);
-            assert(db_it->idx() == data_it->second);
+            assert(db_it->tid() != 0);
 
             auto&& value_part = db_it->value();
             value.append(value_part.data(), value_part.size());
@@ -319,14 +318,12 @@ data_set_t load_data(FILE* fp)
 {
     data_set_t data;
 
-    uint64_t idx;
     char key[4096];
 
-    while (fscanf(fp, "%s %lu", key, &idx) == 2)
+    while (fscanf(fp, "%s", key) == 1)
     {
         bool batch_done = true;
 
-        batch_done &= idx == 0;
         batch_done &= key[0] == '=';
         batch_done &= key[1] == '=';
         batch_done &= key[2] == '\0';
@@ -341,7 +338,7 @@ data_set_t load_data(FILE* fp)
 
         string_storage.append(key, size);
 
-        data.push_back(data_point_t(string_t(offset, size), idx));
+        data.push_back(string_t(offset, size));
     }
 
     return data;

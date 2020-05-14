@@ -5,6 +5,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <cassert>
 
 
 namespace tyrtech::message {

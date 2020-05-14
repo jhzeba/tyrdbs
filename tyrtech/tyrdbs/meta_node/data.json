@@ -1,0 +1,21 @@
+{
+    "tyrtech::tyrdbs::meta_node":
+    {
+        "key":
+        {
+            "flags": "uint8#",
+            "key": "string",
+            "value": "string"
+        },
+	"ushard":
+	{
+	    "id": "uint32#",
+	    "keys": ["key"]
+	},
+        "data":
+        {
+            "flags": "uint8#",
+            "ushards": ["ushard"]
+        }
+    }
+}

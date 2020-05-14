@@ -153,12 +153,11 @@ struct impl : private disallow_copy
         if (request.has_handle() == false)
         {
             writer w;
-            w.idx = idx++;
 
             update_entries(request.get_parser(), request.data(), &w);
 
-            writers[idx] = std::move(w);
-            response->add_handle(idx);
+            writers[++handle] = std::move(w);
+            response->add_handle(handle);
         }
         else
         {
@@ -173,14 +172,15 @@ struct impl : private disallow_copy
     {
         auto& w = writers[request.handle()];
 
-        for (auto&& slice : w.slices)
+        for (auto&& it : w.slices)
         {
-            cb cb(slice.first, this);
+            cb cb(it.first, this);
 
-            auto size = slice.second->commit();
-            auto path = slice.second->path();
+            auto slice = std::make_shared<tyrdbs::slice>(it.second->commit(),
+                                                         it.second->path());
+            slice->set_tid(tid++);
 
-            ushards[slice.first]->add(std::make_shared<tyrdbs::slice>(size, path), &cb);
+            ushards[it.first]->add(std::move(slice), &cb);
         }
 
         writers.erase(request.handle());
@@ -207,6 +207,7 @@ struct impl : private disallow_copy
             if (it->next() == true)
             {
                 reader r;
+
                 r.iterator = std::move(it);
                 r.value_part = r.iterator->value();
 
@@ -273,7 +274,6 @@ private:
     struct writer
     {
         slices_t slices;
-        uint64_t idx{0};
     };
 
     struct reader
@@ -288,7 +288,8 @@ private:
     using readers_t =
             std::unordered_map<uint64_t, reader>;
 
-    uint64_t idx{0};
+    uint64_t tid{1};
+    uint64_t handle{0};
 
     writers_t writers;
     readers_t readers;
@@ -419,7 +420,7 @@ private:
                 slice = std::make_unique<tyrdbs::slice_writer>();
             }
 
-            slice->add(entry.key(), entry.value(), eor, deleted, w->idx);
+            slice->add(entry.key(), entry.value(), eor, deleted);
         }
 
         if ((data.flags() & 0x01) == 0x01)

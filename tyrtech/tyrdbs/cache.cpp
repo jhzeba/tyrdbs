@@ -47,11 +47,11 @@ using latch_t =
         latch<cache::key, node_ptr, cache::key_hasher>;
 
 
-thread_local std::unique_ptr<cache_t> __cache;
-thread_local std::unique_ptr<latch_t> __latch;
+static thread_local std::unique_ptr<cache_t> __cache;
+static thread_local std::unique_ptr<latch_t> __latch;
 
-thread_local uint64_t __cache_requests{0};
-thread_local uint64_t __cache_misses{0};
+static thread_local uint64_t __cache_requests{0};
+static thread_local uint64_t __cache_misses{0};
 
 
 void initialize(uint32_t cache_bits)

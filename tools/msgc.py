@@ -521,7 +521,7 @@ def module_generator(module_name, module, namespace):
 DEFINE_SERVER_EXCEPTION({{loop.index}}, tyrtech::net::server_error_exception, {{exception}});
 {% if loop.last == True %}{{'\n'}}{% endif %}
 {% endfor %}
-void throw_module_exception(const tyrtech::net::service::error_parser& error)
+constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
     {

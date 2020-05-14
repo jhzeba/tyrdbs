@@ -23,7 +23,7 @@ public:
     std::string_view value() const override;
     bool eor() const override;
     bool deleted() const override;
-    uint64_t idx() const override;
+    uint64_t tid() const override;
 
 public:
     slice_iterator(slice* slice, std::shared_ptr<node> node, uint16_t ndx);
@@ -93,9 +93,15 @@ bool slice_iterator::deleted() const
     return m_node->deleted_at(m_ndx);
 }
 
-uint64_t slice_iterator::idx() const
+uint64_t slice_iterator::tid() const
 {
-    return m_attrs->idx;
+    if (m_attrs->tid == 0)
+    {
+        assert(m_slice->m_tid != 0);
+        return m_slice->m_tid;
+    }
+
+    return m_attrs->tid;
 }
 
 slice_iterator::slice_iterator(slice* slice, cache::node_ptr node, uint16_t ndx)
@@ -172,6 +178,12 @@ void slice::unlink()
 uint64_t slice::key_count() const
 {
     return m_key_count;
+}
+
+void slice::set_tid(uint64_t tid)
+{
+    assert(m_tid == 0);
+    m_tid = tid;
 }
 
 slice::slice(uint64_t size, io::file&& file)

@@ -263,7 +263,7 @@ DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, test1_error);
 DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error_exception, test2_error);
 DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error_exception, test3_error);
 
-void throw_module_exception(const tyrtech::net::service::error_parser& error)
+constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
     {
@@ -661,7 +661,7 @@ DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, test1_error);
 DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error_exception, test2_error);
 DEFINE_SERVER_EXCEPTION(3, tyrtech::net::server_error_exception, test3_error);
 
-void throw_module_exception(const tyrtech::net::service::error_parser& error)
+constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
     {

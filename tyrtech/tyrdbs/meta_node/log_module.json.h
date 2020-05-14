@@ -6,10 +6,10 @@
 #include <net/service.json.h>
 
 
-namespace tests::collections {
+namespace tyrtech::tyrdbs::meta_node::log {
 
 
-namespace messages::update_data {
+namespace messages::update {
 
 
 struct request_builder final : public tyrtech::message::struct_builder<2, 0>
@@ -108,7 +108,7 @@ struct response_parser final : public tyrtech::message::struct_parser<1, 0>
 
 }
 
-namespace messages::commit_update {
+namespace messages::commit {
 
 
 struct request_builder final : public tyrtech::message::struct_builder<1, 0>
@@ -170,7 +170,7 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
 
 }
 
-namespace messages::rollback_update {
+namespace messages::rollback {
 
 
 struct request_builder final : public tyrtech::message::struct_builder<1, 0>
@@ -232,7 +232,7 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
 
 }
 
-namespace messages::fetch_data {
+namespace messages::fetch {
 
 
 struct request_builder final : public tyrtech::message::struct_builder<4, 0>
@@ -253,9 +253,20 @@ struct request_builder final : public tyrtech::message::struct_builder<4, 0>
         return tyrtech::message::element<uint64_t>::size;
     }
 
-    void add_min_key(const std::string_view& value)
+    void add_ushard(const uint32_t& value)
     {
         set_offset<1>();
+        struct_builder<4, 0>::add_value(value);
+    }
+
+    static constexpr uint16_t ushard_bytes_required()
+    {
+        return tyrtech::message::element<uint32_t>::size;
+    }
+
+    void add_min_key(const std::string_view& value)
+    {
+        set_offset<2>();
         struct_builder<4, 0>::add_value(value);
     }
 
@@ -266,24 +277,13 @@ struct request_builder final : public tyrtech::message::struct_builder<4, 0>
 
     void add_max_key(const std::string_view& value)
     {
-        set_offset<2>();
+        set_offset<3>();
         struct_builder<4, 0>::add_value(value);
     }
 
     static constexpr uint16_t max_key_bytes_required()
     {
         return tyrtech::message::element<std::string_view>::size;
-    }
-
-    void add_ushard(const uint32_t& value)
-    {
-        set_offset<3>();
-        struct_builder<4, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t ushard_bytes_required()
-    {
-        return tyrtech::message::element<uint32_t>::size;
     }
 };
 
@@ -306,34 +306,34 @@ struct request_parser final : public tyrtech::message::struct_parser<4, 0>
         return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
     }
 
-    bool has_min_key() const
+    bool has_ushard() const
     {
         return has_offset<1>();
     }
 
-    decltype(auto) min_key() const
+    decltype(auto) ushard() const
     {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<1>());
+        return tyrtech::message::element<uint32_t>().parse(m_parser, offset<1>());
     }
 
-    bool has_max_key() const
+    bool has_min_key() const
     {
         return has_offset<2>();
     }
 
-    decltype(auto) max_key() const
+    decltype(auto) min_key() const
     {
         return tyrtech::message::element<std::string_view>().parse(m_parser, offset<2>());
     }
 
-    bool has_ushard() const
+    bool has_max_key() const
     {
         return has_offset<3>();
     }
 
-    decltype(auto) ushard() const
+    decltype(auto) max_key() const
     {
-        return tyrtech::message::element<uint32_t>().parse(m_parser, offset<3>());
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<3>());
     }
 };
 
@@ -394,7 +394,7 @@ struct response_parser final : public tyrtech::message::struct_parser<2, 0>
 
 }
 
-namespace messages::abort_fetch {
+namespace messages::abort {
 
 
 struct request_builder final : public tyrtech::message::struct_builder<1, 0>
@@ -456,6 +456,8 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
 
 }
 
+DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, invalid_handle_exception);
+
 constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
@@ -468,6 +470,10 @@ constexpr void throw_module_exception(const tyrtech::net::service::error_parser&
         {
             throw tyrtech::net::unknown_function_exception("{}", error.message());
         }
+        case 1:
+        {
+            throw invalid_handle_exception("{}", error.message());
+        }
         default:
         {
             throw tyrtech::net::unknown_exception("#{}: unknown exception", error.code());
@@ -477,22 +483,22 @@ constexpr void throw_module_exception(const tyrtech::net::service::error_parser&
 
 static constexpr uint16_t id{1};
 
-struct update_data
+struct update
 {
     static constexpr uint16_t id{1};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::update_data::request_builder;
+            messages::update::request_builder;
 
     using request_parser_t =
-            messages::update_data::request_parser;
+            messages::update::request_parser;
 
     using response_builder_t =
-            messages::update_data::response_builder;
+            messages::update::response_builder;
 
     using response_parser_t =
-            messages::update_data::response_parser;
+            messages::update::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -500,22 +506,22 @@ struct update_data
     }
 };
 
-struct commit_update
+struct commit
 {
     static constexpr uint16_t id{2};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::commit_update::request_builder;
+            messages::commit::request_builder;
 
     using request_parser_t =
-            messages::commit_update::request_parser;
+            messages::commit::request_parser;
 
     using response_builder_t =
-            messages::commit_update::response_builder;
+            messages::commit::response_builder;
 
     using response_parser_t =
-            messages::commit_update::response_parser;
+            messages::commit::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -523,22 +529,22 @@ struct commit_update
     }
 };
 
-struct rollback_update
+struct rollback
 {
     static constexpr uint16_t id{3};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::rollback_update::request_builder;
+            messages::rollback::request_builder;
 
     using request_parser_t =
-            messages::rollback_update::request_parser;
+            messages::rollback::request_parser;
 
     using response_builder_t =
-            messages::rollback_update::response_builder;
+            messages::rollback::response_builder;
 
     using response_parser_t =
-            messages::rollback_update::response_parser;
+            messages::rollback::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -546,22 +552,22 @@ struct rollback_update
     }
 };
 
-struct fetch_data
+struct fetch
 {
     static constexpr uint16_t id{4};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::fetch_data::request_builder;
+            messages::fetch::request_builder;
 
     using request_parser_t =
-            messages::fetch_data::request_parser;
+            messages::fetch::request_parser;
 
     using response_builder_t =
-            messages::fetch_data::response_builder;
+            messages::fetch::response_builder;
 
     using response_parser_t =
-            messages::fetch_data::response_parser;
+            messages::fetch::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -569,22 +575,22 @@ struct fetch_data
     }
 };
 
-struct abort_fetch
+struct abort
 {
     static constexpr uint16_t id{5};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::abort_fetch::request_builder;
+            messages::abort::request_builder;
 
     using request_parser_t =
-            messages::abort_fetch::request_parser;
+            messages::abort::request_parser;
 
     using response_builder_t =
-            messages::abort_fetch::response_builder;
+            messages::abort::response_builder;
 
     using response_parser_t =
-            messages::abort_fetch::response_parser;
+            messages::abort::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -608,83 +614,83 @@ struct module : private tyrtech::disallow_copy
     {
         switch (service_request.function())
         {
-            case update_data::id:
+            case update::id:
             {
                 using request_parser_t =
-                        typename update_data::request_parser_t;
+                        typename update::request_parser_t;
 
                 using response_builder_t =
-                        typename update_data::response_builder_t;
+                        typename update::response_builder_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
                 response_builder_t response(service_response->add_message());
 
-                impl->update_data(request, &response, ctx);
+                impl->update(request, &response, ctx);
 
                 break;
             }
-            case commit_update::id:
+            case commit::id:
             {
                 using request_parser_t =
-                        typename commit_update::request_parser_t;
+                        typename commit::request_parser_t;
 
                 using response_builder_t =
-                        typename commit_update::response_builder_t;
+                        typename commit::response_builder_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
                 response_builder_t response(service_response->add_message());
 
-                impl->commit_update(request, &response, ctx);
+                impl->commit(request, &response, ctx);
 
                 break;
             }
-            case rollback_update::id:
+            case rollback::id:
             {
                 using request_parser_t =
-                        typename rollback_update::request_parser_t;
+                        typename rollback::request_parser_t;
 
                 using response_builder_t =
-                        typename rollback_update::response_builder_t;
+                        typename rollback::response_builder_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
                 response_builder_t response(service_response->add_message());
 
-                impl->rollback_update(request, &response, ctx);
+                impl->rollback(request, &response, ctx);
 
                 break;
             }
-            case fetch_data::id:
+            case fetch::id:
             {
                 using request_parser_t =
-                        typename fetch_data::request_parser_t;
+                        typename fetch::request_parser_t;
 
                 using response_builder_t =
-                        typename fetch_data::response_builder_t;
+                        typename fetch::response_builder_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
                 response_builder_t response(service_response->add_message());
 
-                impl->fetch_data(request, &response, ctx);
+                impl->fetch(request, &response, ctx);
 
                 break;
             }
-            case abort_fetch::id:
+            case abort::id:
             {
                 using request_parser_t =
-                        typename abort_fetch::request_parser_t;
+                        typename abort::request_parser_t;
 
                 using response_builder_t =
-                        typename abort_fetch::response_builder_t;
+                        typename abort::response_builder_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
                 response_builder_t response(service_response->add_message());
 
-                impl->abort_fetch(request, &response, ctx);
+                impl->abort(request, &response, ctx);
 
                 break;
             }

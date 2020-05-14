@@ -1,0 +1,13 @@
+{
+    "includes":
+    [
+        "tyrdbs/meta_node/log_module.json.h"
+    ],
+    "tyrtech::tyrdbs::meta_node":
+    {
+        "service":
+        [
+            "log"
+        ]
+    }
+}

@@ -14,7 +14,7 @@ public:
     std::string_view value() const override;
     bool eor() const override;
     bool deleted() const override;
-    uint64_t idx() const override;
+    uint64_t tid() const override;
 
 public:
     ushard_iterator(ushard::slices_t slices,
@@ -47,7 +47,7 @@ private:
 
             if (cmp == 0)
             {
-                return it1->idx() < it2->idx();
+                return it1->tid() < it2->tid();
             }
 
             return cmp > 0;
@@ -128,9 +128,9 @@ bool ushard_iterator::deleted() const
     return m_elements.back().second->deleted();
 }
 
-uint64_t ushard_iterator::idx() const
+uint64_t ushard_iterator::tid() const
 {
-    return m_elements.back().second->idx();
+    return m_elements.back().second->tid();
 }
 
 ushard_iterator::ushard_iterator(ushard::slices_t slices,
@@ -272,9 +272,9 @@ uint64_t ushard::merge(slice_writer* target, uint32_t tier, meta_callback* cb)
     target->add(&it, false);
     target->flush();
 
-    auto target_size = target->commit();
+    auto slice = std::make_shared<tyrdbs::slice>(target->commit(), "{}", target->path());
 
-    add(std::make_shared<slice>(target_size, "{}", target->path()), cb);
+    add(std::move(slice), cb);
     remove_from(tier, count, cb);
 
     cb->remove(tier_slices);
@@ -300,9 +300,9 @@ uint64_t ushard::compact(slice_writer* target, meta_callback* cb)
     target->add(&it, true);
     target->flush();
 
-    auto target_size = target->commit();
+    auto slice = std::make_shared<tyrdbs::slice>(target->commit(), "{}", target->path());
 
-    add(std::make_shared<slice>(target_size, "{}", target->path()), cb);
+    add(std::move(slice), cb);
 
     for (auto&& it : tier_map_checkpoint)
     {

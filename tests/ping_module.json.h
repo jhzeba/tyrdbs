@@ -92,7 +92,7 @@ struct response_parser final : public tyrtech::message::struct_parser<1, 0>
 
 }
 
-void throw_module_exception(const tyrtech::net::service::error_parser& error)
+constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
     switch (error.code())
     {

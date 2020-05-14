@@ -75,18 +75,25 @@ void slice_writer::add(iterator* it, bool compact)
             continue;
         }
 
-        add(it->key(), it->value(), it->eor(), it->deleted(), it->idx());
+        add(it->key(), it->value(), it->eor(), it->deleted(), it->tid());
     }
 }
 
 void slice_writer::add(const std::string_view& key,
                        std::string_view value,
                        bool eor,
+                       bool deleted)
+{
+    add(key, value, eor, deleted, 0);
+}
+
+void slice_writer::add(const std::string_view& key,
+                       std::string_view value,
+                       bool eor,
                        bool deleted,
-                       uint64_t idx)
+                       uint64_t tid)
 {
     assert(likely(m_commited == false));
-    assert(likely(idx < max_idx));
 
     bool new_key = check(key, value, eor, deleted);
 
@@ -98,7 +105,7 @@ void slice_writer::add(const std::string_view& key,
     while (true)
     {
         data_attributes attributes;
-        attributes.idx = idx;
+        attributes.tid = tid;
 
         if (auto res = m_node.add(key, value, eor, deleted, attributes, false); res != -1)
         {

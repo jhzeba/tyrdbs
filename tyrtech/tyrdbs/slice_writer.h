@@ -17,15 +17,11 @@ public:
     DEFINE_EXCEPTION(runtime_error_exception, invalid_data_exception);
 
 public:
-    static constexpr uint64_t max_idx{0x1000000000000ULL};
-
-public:
     void add(iterator* it, bool compact);
     void add(const std::string_view& key,
              std::string_view value,
              bool eor,
-             bool deleted,
-             uint64_t idx);
+             bool deleted);
 
     void flush();
     uint64_t commit();
@@ -98,6 +94,12 @@ private:
     std::shared_ptr<node> m_last_node;
 
 private:
+    void add(const std::string_view& key,
+             std::string_view value,
+             bool eor,
+             bool deleted,
+             uint64_t idx);
+
     bool check(const std::string_view& key,
                const std::string_view& value,
                bool eor,

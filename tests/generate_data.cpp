@@ -8,9 +8,6 @@
 using namespace tyrtech;
 
 
-using map_t =
-        std::map<uint64_t, uint64_t>;
-
 using set_t =
         std::set<uint64_t>;
 
@@ -56,7 +53,7 @@ int main(int argc, const char* argv[])
 
     cmd.parse(argc, argv);
 
-    map_t map;
+    set_t test_set;
 
     std::default_random_engine generator(cmd.get<uint32_t>("seed"));
     std::uniform_int_distribution<uint64_t> distribution;
@@ -66,22 +63,22 @@ int main(int argc, const char* argv[])
 
     for (uint32_t i = 0; i < cmd.get<uint32_t>("iterations"); i++)
     {
-        set_t set;
+        set_t it_set;
 
-        while (set.size() != cmd.get<uint32_t>("keys"))
+        while (it_set.size() != cmd.get<uint32_t>("keys"))
         {
             uint64_t key = distribution(generator);
 
-            set.insert(key);
-            map[key] = i;
+            it_set.insert(key);
+            test_set.insert(key);
         }
 
-        for (auto&& e : set)
+        for (auto&& e : it_set)
         {
-            fprintf(fd, "%016lx %u\n", e, i);
+            fprintf(fd, "%016lx\n", e);
         }
 
-        fprintf(fd, "== 0\n");
+        fprintf(fd, "==\n");
     }
 
     fclose(fd);
@@ -89,12 +86,12 @@ int main(int argc, const char* argv[])
     fd = fopen(cmd.get<std::string_view>("test-data").data(), "w");
     assert(fd != nullptr);
 
-    for (auto&& it : map)
+    for (auto&& it : test_set)
     {
-        fprintf(fd, "%016lx %lu\n", it.first, it.second);
+        fprintf(fd, "%016lx\n", it);
     }
 
-    fprintf(fd, "== 0\n");
+    fprintf(fd, "==\n");
 
     fclose(fd);
 

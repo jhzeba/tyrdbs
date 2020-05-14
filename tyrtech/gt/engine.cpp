@@ -293,7 +293,7 @@ context_t engine::get_context(uint32_t handle)
 }
 
 
-thread_local std::unique_ptr<engine> __engine;
+static thread_local std::unique_ptr<engine> __engine;
 
 
 void initialize()

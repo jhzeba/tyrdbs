@@ -1,0 +1,72 @@
+{
+    "tyrtech::tyrdbs::meta_node":
+    {
+        "log":
+        {
+            "id": 1,
+            "exceptions": ["invalid_handle_exception"],
+            "update":
+            {
+                "id": 1,
+                "request":
+                {
+                    "handle": "uint64",
+                    "data": "template"
+                },
+                "response":
+                {
+                    "handle": "uint64"
+                }
+            },
+            "commit":
+            {
+                "id": 2,
+                "request":
+                {
+                    "handle": "uint64"
+                },
+                "response":
+                {
+                }
+            },
+            "rollback":
+            {
+                "id": 3,
+                "request":
+                {
+                    "handle": "uint64"
+                },
+                "response":
+                {
+                }
+            },
+            "fetch":
+            {
+                "id": 4,
+                "request":
+                {
+                    "handle": "uint64",
+                    "ushard": "uint32",
+                    "min_key": "string",
+                    "max_key": "string"
+                },
+                "response":
+                {
+                    "handle": "uint64",
+                    "data": "template"
+                }
+            },
+            "abort":
+            {
+                "id": 5,
+                "request":
+                {
+                    "handle": "uint64"
+                },
+                "response":
+                {
+                }
+            }
+        }
+    }
+}

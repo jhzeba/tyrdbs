@@ -9,7 +9,7 @@ namespace tyrtech::tyrdbs {
 
 struct data_attributes
 {
-    uint64_t idx;
+    uint64_t tid;
 } __attribute__ ((packed));
 
 struct index_attributes

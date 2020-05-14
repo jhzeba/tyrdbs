@@ -128,7 +128,7 @@ void engine::io_uring_thread()
 namespace tyrtech::io {
 
 
-thread_local std::unique_ptr<io_uring::engine> __io_uring;
+static thread_local std::unique_ptr<io_uring::engine> __io_uring;
 
 
 void initialize(uint32_t queue_size)
