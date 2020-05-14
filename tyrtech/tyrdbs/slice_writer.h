@@ -98,7 +98,7 @@ private:
              std::string_view value,
              bool eor,
              bool deleted,
-             uint64_t idx);
+             uint64_t tid);
 
     bool check(const std::string_view& key,
                const std::string_view& value,
