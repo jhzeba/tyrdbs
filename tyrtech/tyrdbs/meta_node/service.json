@@ -1,7 +1,7 @@
 {
     "includes":
     [
-        "tyrdbs/meta_node/log_module.json.h"
+        "tyrdbs/meta_node/modules.json.h"
     ],
     "tyrtech::tyrdbs::meta_node":
     {

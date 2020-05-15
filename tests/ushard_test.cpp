@@ -6,7 +6,8 @@
 #include <gt/condition.h>
 #include <io/engine.h>
 #include <tyrdbs/cache.h>
-#include <tyrdbs/meta_node/ushard.h>
+#include <tyrdbs/slice_writer.h>
+#include <tyrdbs/overwrite_iterator.h>
 
 #include <tests/stats.h>
 
@@ -16,24 +17,15 @@
 using namespace tyrtech;
 
 
-struct test_cb : public tyrdbs::meta_node::ushard::meta_callback
+struct thread_data
 {
-    void add(const tyrdbs::slice_ptr& slice) override
-    {
-    }
+    using ushard_t =
+            std::vector<tyrdbs::slices_t>;
 
-    void remove(const tyrdbs::slices_t& slices) override
-    {
-        for (auto&& slice : slices)
-        {
-            slice->unlink();
-        }
-    }
-
-    std::vector<uint32_t> merge_requests;
+    std::vector<uint8_t> merge_requests;
     gt::condition merge_cond;
 
-    std::shared_ptr<tyrdbs::meta_node::ushard> ushard;
+    ushard_t ushard;
 
     bool compact{false};
     bool exit_merge{false};
@@ -41,16 +33,6 @@ struct test_cb : public tyrdbs::meta_node::ushard::meta_callback
     bool merge_done{false};
     gt::condition done_cond;
 
-    void merge(uint16_t tier) override
-    {
-        merge_requests.push_back(tier);
-        merge_cond.signal();
-    }
-};
-
-
-struct thread_data
-{
     uint32_t thread_id{0};
 
     uint64_t duration{0};
@@ -61,6 +43,10 @@ struct thread_data
     thread_data(uint32_t thread_id)
       : thread_id(thread_id)
     {
+        for (uint32_t i = 0; i < 16; i++)
+        {
+            ushard.emplace_back(tyrdbs::slices_t());
+        }
     }
 };
 
@@ -79,7 +65,12 @@ using data_sets_t =
         std::vector<data_set_t>;
 
 
-void insert(const data_set_t& data, test_cb* cb)
+uint32_t tier_of(const tyrdbs::slice_ptr& slice)
+{
+    return (64 - __builtin_clzll(slice->key_count())) >> 2;
+}
+
+void insert(const data_set_t& data, thread_data* td)
 {
     char buff[37];
     tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
@@ -97,7 +88,15 @@ void insert(const data_set_t& data, test_cb* cb)
     auto slice = std::make_shared<tyrdbs::slice>(w.commit(), "{}", w.path());
     slice->set_tid(tid++);
 
-    cb->ushard->add(std::move(slice), cb);
+    auto tier = tier_of(slice);
+
+    td->ushard[tier].push_back(std::move(slice));
+
+    if (td->ushard[tier].size() > 4)
+    {
+        td->merge_requests.push_back(tier);
+        td->merge_cond.signal();
+    }
 
     auto t2 = clock::now();
 
@@ -109,10 +108,17 @@ void insert(const data_set_t& data, test_cb* cb)
                    data.size() * 1000000000. / duration);
 }
 
-void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tests::stats* s)
+void verify_sequential(const data_set_t& data, const thread_data::ushard_t& ushard, tests::stats* s)
 {
-    auto&& db_it = ushard->begin();
-    auto&& data_it = data.begin();
+    tyrdbs::slices_t slices;
+
+    for (auto& slice_list : ushard)
+    {
+        std::copy(slice_list.begin(), slice_list.end(), std::back_inserter(slices));
+    }
+
+    auto db_it = tyrdbs::overwrite_iterator(slices);
+    auto data_it = data.begin();
 
     std::string value;
 
@@ -125,24 +131,24 @@ void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard
 
         {
             auto sw = s->stopwatch();
-            assert(db_it->next() == true);
+            assert(db_it.next() == true);
         }
 
         while (true)
         {
-            assert(db_it->key().compare(key) == 0);
-            assert(db_it->deleted() == false);
-            assert(db_it->tid() != 0);
+            assert(db_it.key().compare(key) == 0);
+            assert(db_it.deleted() == false);
+            assert(db_it.tid() != 0);
 
-            auto&& value_part = db_it->value();
+            auto value_part = db_it.value();
             value.append(value_part.data(), value_part.size());
 
-            if (db_it->eor() == true)
+            if (db_it.eor() == true)
             {
                 break;
             }
 
-            assert(db_it->next() == true);
+            assert(db_it.next() == true);
         }
 
         assert(key.compare(value) == 0);
@@ -160,12 +166,12 @@ void verify_sequential(const data_set_t& data, tyrdbs::meta_node::ushard* ushard
         }
     }
 
-    assert(db_it->next() == false);
+    assert(db_it.next() == false);
 }
 
-void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tests::stats* s)
+void verify_range(const data_set_t& data, const thread_data::ushard_t& ushard, tests::stats* s)
 {
-    auto&& data_it = data.begin();
+    auto data_it = data.begin();
 
     std::string value;
 
@@ -174,30 +180,35 @@ void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tes
         std::string_view key(string_storage.data() + data_it->first,
                              data_it->second);
 
-        std::unique_ptr<tyrdbs::iterator> db_it;
+        tyrdbs::slices_t slices;
 
+        for (auto& slice_list : ushard)
         {
-            auto sw = s->stopwatch();
-            db_it = ushard->range(key, key);
+            std::copy(slice_list.begin(), slice_list.end(), std::back_inserter(slices));
         }
 
-        assert(db_it->next() == true);
+        auto t1 = clock::now();
+        auto db_it = tyrdbs::overwrite_iterator(key, key, slices);
+
+        s->add(clock::now() - t1);
+
+        assert(db_it.next() == true);
 
         while (true)
         {
-            assert(db_it->key().compare(key) == 0);
-            assert(db_it->deleted() == false);
-            assert(db_it->tid() != 0);
+            assert(db_it.key().compare(key) == 0);
+            assert(db_it.deleted() == false);
+            assert(db_it.tid() != 0);
 
-            auto&& value_part = db_it->value();
+            auto value_part = db_it.value();
             value.append(value_part.data(), value_part.size());
 
-            if (db_it->eor() == true)
+            if (db_it.eor() == true)
             {
                 break;
             }
 
-            assert(db_it->next() == true);
+            assert(db_it.next() == true);
         }
 
         assert(key.compare(value) == 0);
@@ -210,108 +221,156 @@ void verify_range(const data_set_t& data, tyrdbs::meta_node::ushard* ushard, tes
     }
 }
 
-void merge_thread(test_cb* cb)
+void merge(thread_data* td, uint8_t tier)
+{
+    bool compact{tier == static_cast<uint8_t>(-1)};
+
+    tyrdbs::slices_t slices;
+
+    if (compact == true)
+    {
+        for (auto& slice_list : td->ushard)
+        {
+            std::copy(slice_list.begin(), slice_list.end(), std::back_inserter(slices));
+        }
+
+        if (slices.size() == 1)
+        {
+            return;
+        }
+    }
+    else
+    {
+        slices = td->ushard[tier];
+
+        if (slices.size() < 4)
+        {
+            return;
+        }
+    }
+
+    char buff[37];
+    tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
+
+    auto t1 = clock::now();
+
+    auto db_it = tyrdbs::overwrite_iterator(slices);
+
+    w.add(&db_it, compact);
+    w.flush();
+
+    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), "{}", w.path());
+
+    if (compact == true)
+    {
+        for (auto& slice_list : td->ushard)
+        {
+            slice_list.clear();
+        }
+    }
+    else
+    {
+        td->ushard[tier].erase(td->ushard[tier].begin(),
+                               td->ushard[tier].begin() + slices.size());
+    }
+
+    auto merged_keys = slice->key_count();
+    auto new_tier = tier_of(slice);
+
+    td->ushard[new_tier].push_back(std::move(slice));
+
+    if (td->ushard[new_tier].size() > 4)
+    {
+        td->merge_requests.push_back(new_tier);
+        td->merge_cond.signal();
+    }
+
+    for (auto& slice : slices)
+    {
+        slice->unlink();
+    }
+
+    auto t2 = clock::now();
+
+    if (merged_keys != 0)
+    {
+        uint64_t duration = t2 - t1;
+
+        logger::notice("merged {} keys in {:.6f} s, {:.2f} keys/s",
+                       merged_keys,
+                       duration / 1000000000.,
+                       merged_keys * 1000000000. / duration);
+    }
+}
+
+void merge_thread(thread_data* td)
 {
     while (true)
     {
-        if (cb->merge_requests.size() != 0)
+        if (td->merge_requests.size() != 0)
         {
-            uint32_t tier = cb->merge_requests[0];
-            cb->merge_requests.erase(cb->merge_requests.begin());
+            uint32_t tier = td->merge_requests[0];
+            td->merge_requests.erase(td->merge_requests.begin());
 
-            char buff[37];
-            tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
-
-            auto t1 = clock::now();
-            uint64_t merged_keys = cb->ushard->merge(&w, tier, cb);
-            auto t2 = clock::now();
-
-            if (merged_keys != 0)
-            {
-                uint64_t duration = t2 - t1;
-
-                logger::notice("merged {} keys in {:.6f} s, {:.2f} keys/s",
-                               merged_keys,
-                               duration / 1000000000.,
-                               merged_keys * 1000000000. / duration);
-            }
+            merge(td, tier);
 
             gt::yield();
         }
         else
         {
-            if (cb->exit_merge == true)
+            if (td->exit_merge == true)
             {
                 break;
             }
             else
             {
-                cb->merge_cond.wait();
+                td->merge_cond.wait();
             }
         }
     }
 
-    if (cb->compact == true)
+    if (td->compact == true)
     {
-        char buff[37];
-        tyrdbs::slice_writer w("{}.dat", uuid().str(buff, sizeof(buff)));
-
-        auto t1 = clock::now();
-        uint64_t compacted_keys = cb->ushard->compact(&w, cb);
-        auto t2 = clock::now();
-
-        if (compacted_keys != 0)
-        {
-            uint64_t duration = t2 - t1;
-
-            logger::notice("compacted {} keys in {:.6f} s, {:.2f} keys/s",
-                           compacted_keys,
-                           duration / 1000000000.,
-                           compacted_keys * 1000000000. / duration);
-        }
+        merge(td, static_cast<uint8_t>(-1));
     }
 
-    cb->merge_done = true;
-    cb->done_cond.signal();
+    td->merge_done = true;
+    td->done_cond.signal();
 }
 
 
 void test(const data_sets_t* data,
           const data_set_t* test_data,
-          thread_data* t,
+          thread_data* td,
           bool compact)
 {
     auto t1 = clock::now();
 
-    test_cb cb;
-
-    cb.ushard = std::make_shared<tyrdbs::meta_node::ushard>();
-
-    gt::create_thread(merge_thread, &cb);
+    gt::create_thread(merge_thread, td);
 
     for (auto&& set : *data)
     {
-        insert(set, &cb);
+        insert(set, td);
     }
 
-    cb.compact = compact;
+    td->compact = compact;
 
-    cb.exit_merge = true;
-    cb.merge_cond.signal();
+    td->exit_merge = true;
+    td->merge_cond.signal();
 
-    while (cb.merge_done == false)
+    while (td->merge_done == false)
     {
-        cb.done_cond.wait();
+        td->done_cond.wait();
     }
 
-    verify_sequential(*test_data, cb.ushard.get(), &t->vs_stats);
-    verify_range(*test_data, cb.ushard.get(), &t->vr_stats);
+    verify_sequential(*test_data, td->ushard, &td->vs_stats);
+    verify_range(*test_data, td->ushard, &td->vr_stats);
 
     auto t2 = clock::now();
 
-    t->duration = t2 - t1;
+    td->duration = t2 - t1;
 
-    //cb.ushard->drop();
+    //td.ushard->drop();
 }
 
 data_set_t load_data(FILE* fp)
@@ -489,16 +548,6 @@ int main(int argc, const char* argv[])
     {
         report(&t);
     }
-
-    /*
-    uint32_t capacity = storage::capacity();
-    uint32_t size = storage::size();
-
-    logger::notice("");
-    logger::notice("capacity:    {}", capacity);
-    logger::notice("used blocks: {}", size);
-    logger::notice("free blocks: {}", capacity - size);
-    */
 
     return 0;
 }

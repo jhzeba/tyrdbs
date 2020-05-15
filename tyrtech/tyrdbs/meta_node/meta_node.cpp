@@ -61,12 +61,23 @@ int main(int argc, const char* argv[])
                   "12",
                   {"cache size expressed as 2^bits (default is 12)"});
 
+    cmd.add_param("max-slices",
+                  nullptr,
+                  "max-slices",
+                  "num",
+                  "512",
+                  {"maximum number of slices allowed (default is 512)"});
+
     cmd.add_param("ushards",
                   nullptr,
                   "ushards",
                   "num",
                   "16",
                   {"number of ushards to use (default is 16)"});
+
+    cmd.add_param("uri",
+                  "<uri>",
+                  {"uri to listen on"});
 
     try
     {
@@ -89,6 +100,9 @@ int main(int argc, const char* argv[])
         tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
         gt::create_thread(tyrdbs::meta_node::service_thread,
+                          cmd.get<std::string_view>("uri"),
+                          cmd.get<uint32_t>("merge-threads"),
+                          cmd.get<uint32_t>("max-slices"),
                           cmd.get<uint32_t>("ushards"));
 
         gt::run();

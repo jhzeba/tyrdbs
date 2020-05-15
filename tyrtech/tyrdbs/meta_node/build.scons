@@ -15,8 +15,7 @@ default_libs = [
 meta_node_sources = [
     'meta_node.cpp',
     'log_module.cpp',
-    'service.cpp',
-    'ushard.cpp'
+    'service.cpp'
 ]
 
 env.Program('meta_node',

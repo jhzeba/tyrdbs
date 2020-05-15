@@ -1,29 +1,11 @@
+#include <common/uuid.h>
 #include <gt/async.h>
+#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 #include <tyrdbs/meta_node/data.json.h>
 
 
 namespace tyrtech::tyrdbs::meta_node::log {
-
-
-struct meta_callback : public ushard::meta_callback
-{
-    void add(const slice_ptr& slice) override
-    {
-    }
-
-    void remove(const slices_t& slices) override
-    {
-        for (auto&& slice : slices)
-        {
-            slice->unlink();
-        }
-    }
-
-    void merge(uint16_t tier) override
-    {
-    }
-};
 
 
 impl::context::context(impl* impl)
@@ -116,13 +98,13 @@ void impl::commit(const commit::request_parser_t& request,
 
     for (auto& it : it->second.slice_writers)
     {
-        meta_callback cb;
+        m_slice_count++;
 
         auto slice = std::make_shared<tyrdbs::slice>(it.second->commit(),
                                                      it.second->path());
         slice->set_tid(m_next_tid++);
 
-        m_ushards[it.first % m_ushards.size()]->add(std::move(slice), &cb);
+        m_ushards[it.first % m_ushards.size()].emplace_back(std::move(slice));
     }
 
     ctx->m_writers.erase(it);
@@ -150,7 +132,9 @@ void impl::fetch(const fetch::request_parser_t& request,
     if (request.has_handle() == false)
     {
         auto ushard = m_ushards[request.ushard() % m_ushards.size()];
-        auto it = ushard->range(request.min_key(), request.max_key());
+        auto it = std::make_unique<overwrite_iterator>(request.min_key(),
+                                                       request.max_key(),
+                                                       ushard);
 
         if (it->next() == true)
         {
@@ -292,7 +276,7 @@ void impl::update_data(const message::parser* p, uint16_t off, context::writer* 
 
             if (slice_writer == nullptr)
             {
-                slice_writer = std::make_unique<tyrdbs::slice_writer>();
+                slice_writer = new_slice_writer();
             }
 
             if (ushard.has_entries() == false)
@@ -334,11 +318,98 @@ void impl::update_data(const message::parser* p, uint16_t off, context::writer* 
     jobs.wait();
 }
 
-impl::impl(const std::string_view& path, uint32_t ushards)
+void impl::compact_if_needed(uint32_t ushard)
+{
+    if (m_ushard_locks[ushard] == true)
+    {
+        return;
+    }
+
+    m_ushard_locks[ushard] = true;
+
+    auto slices = m_ushards[ushard];
+
+    if (slices.size() < 4)
+    {
+        m_ushard_locks[ushard] = false;
+
+        return;
+    }
+
+    auto it = overwrite_iterator(slices);
+    auto slice_writer = new_slice_writer();
+
+    slice_writer->add(&it, true);
+    slice_writer->flush();
+
+    m_slice_count++;
+
+    auto slice = std::make_shared<tyrdbs::slice>(slice_writer->commit(),
+                                                 slice_writer->path());
+
+    m_ushards[ushard].erase(m_ushards[ushard].begin(),
+                            m_ushards[ushard].begin() + slices.size());
+
+    m_ushards[ushard].emplace_back(std::move(slice));
+
+    for (auto& slice : slices)
+    {
+        slice->unlink();
+    }
+
+    assert(likely(m_slice_count > slices.size()));
+    m_slice_count -= slices.size();
+
+    m_slice_count_cond.signal_all();
+
+    m_ushard_locks[ushard] = false;
+}
+
+impl::slice_writer_ptr impl::new_slice_writer()
+{
+    while (m_slice_count > m_max_slices)
+    {
+        m_slice_count_cond.wait();
+    }
+
+    char buff[37];
+
+    return std::make_shared<tyrdbs::slice_writer>("{}.dat", uuid().str(buff, sizeof(buff)));
+}
+
+void impl::merge_thread()
+{
+    while (true)
+    {
+        if (gt::terminated() == true)
+        {
+            break;
+        }
+
+        for (uint32_t i = 0; i < m_ushards.size(); i++)
+        {
+            compact_if_needed(i);
+        }
+
+        gt::sleep(1);
+    }
+}
+
+impl::impl(const std::string_view& path,
+           uint32_t merge_threads,
+           uint32_t max_slices,
+           uint32_t ushards)
+  : m_max_slices(max_slices)
 {
     for (uint32_t i = 0; i < ushards; i++)
     {
-        m_ushards.push_back(std::make_shared<ushard>());
+        m_ushards.emplace_back(slices_t());
+        m_ushard_locks.push_back(false);
+    }
+
+    for (uint32_t i = 0; i < merge_threads; i++)
+    {
+        gt::create_thread(&impl::merge_thread, this);
     }
 }
 

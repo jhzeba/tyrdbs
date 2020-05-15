@@ -120,14 +120,6 @@ public:
     {
     }
 
-    ~buffered_writer()
-    {
-        if (m_sink != nullptr)
-        {
-            assert(likely(m_offset == 0));
-        }
-    }
-
 private:
     uint32_t m_offset{0};
 

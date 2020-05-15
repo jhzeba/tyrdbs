@@ -18,11 +18,14 @@ using server_t =
         net::rpc_server<8192, service_t>;
 
 
-void service_thread(uint32_t ushards)
+void service_thread(const std::string_view& uri,
+                    uint32_t merge_threads,
+                    uint32_t max_slices,
+                    uint32_t ushards)
 {
-    auto ch = io::uri::listen("tcp://localhost:1234");
+    auto ch = io::uri::listen(uri);
 
-    log::impl impl("data", ushards);
+    log::impl impl("data", merge_threads, max_slices, ushards);
     service_t service(&impl);
 
     server_t server(ch, &service);

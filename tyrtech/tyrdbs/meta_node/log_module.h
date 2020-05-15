@@ -1,8 +1,10 @@
 #pragma once
 
 
-#include <tyrdbs/meta_node/ushard.h>
-#include <tyrdbs/meta_node/log_module.json.h>
+#include <gt/condition.h>
+#include <tyrdbs/slice_writer.h>
+#include <tyrdbs/iterator.h>
+#include <tyrdbs/meta_node/modules.json.h>
 
 
 namespace tyrtech::tyrdbs::meta_node::log {
@@ -10,6 +12,13 @@ namespace tyrtech::tyrdbs::meta_node::log {
 
 class impl : private disallow_copy
 {
+private:
+    using slice_writer_ptr =
+            std::shared_ptr<tyrdbs::slice_writer>;
+
+    using ushards_t =
+            std::vector<slices_t>;
+
 public:
     class context : private disallow_copy
     {
@@ -21,9 +30,6 @@ public:
         context& operator=(context&& other) noexcept;
 
     private:
-        using slice_writer_ptr =
-                std::shared_ptr<tyrdbs::slice_writer>;
-
         using slice_writers_t =
                 std::unordered_map<uint32_t, slice_writer_ptr>;
 
@@ -93,22 +99,30 @@ public:
                context* ctx);
 
 public:
-    impl(const std::string_view& path, uint32_t ushards);
-
-private:
-    using ushard_ptr =
-            std::shared_ptr<ushard>;
-
-    using ushards_t =
-            std::vector<ushard_ptr>;
+    impl(const std::string_view& path,
+         uint32_t max_slices,
+         uint32_t merge_threads,
+         uint32_t ushards);
 
 private:
     ushards_t m_ushards;
+
+    uint32_t m_max_slices{0};
+    uint32_t m_slice_count{0};
+    gt::condition m_slice_count_cond;
+
     uint64_t m_next_tid{1};
+
+    std::vector<bool> m_ushard_locks;
 
 private:
     bool fetch_entries(context::reader* r, message::builder* builder);
     void update_data(const message::parser* p, uint16_t off, context::writer* w);
+
+    slice_writer_ptr new_slice_writer();
+
+    void compact_if_needed(uint32_t ushard);
+    void merge_thread();
 };
 
 }

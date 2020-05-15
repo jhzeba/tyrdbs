@@ -5,7 +5,7 @@
 #include <net/server_exception.h>
 #include <net/service.json.h>
 
-#include <tyrdbs/meta_node/log_module.json.h>
+#include <tyrdbs/meta_node/modules.json.h>
 
 
 namespace tyrtech::tyrdbs::meta_node {

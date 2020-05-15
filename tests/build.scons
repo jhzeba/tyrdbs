@@ -21,7 +21,7 @@ env.Program(
 
 env.Program(
     target='ushard_test',
-    source=['ushard_test.cpp', '../tyrtech/tyrdbs/meta_node/ushard.cpp'],
+    source=['ushard_test.cpp'],
     LIBS=default_libs
 )
 
@@ -73,11 +73,13 @@ env.Program(
     LIBS=default_libs
 )
 
+"""
 env.Program(
     target='db_server',
     source=['db_server.cpp', '../tyrtech/tyrdbs/meta_node/ushard.cpp'],
     LIBS=default_libs
 )
+"""
 
 env.Program(
     target='db_update_client_seq',
@@ -100,6 +102,12 @@ env.Program(
 env.Program(
     target='db_fetch_client_rnd',
     source=['db_fetch_client_rnd.cpp'],
+    LIBS=default_libs
+)
+
+env.Program(
+    target='meta_node_test',
+    source=['meta_node_test.cpp'],
     LIBS=default_libs
 )
 
