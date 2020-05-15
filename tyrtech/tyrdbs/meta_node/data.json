@@ -3,6 +3,7 @@
     {
         "entry":
         {
+            "tid": "uint64#",
             "flags": "uint8#",
             "key": "string",
             "value": "string"

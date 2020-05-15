@@ -8,22 +8,27 @@
 namespace tyrtech::tyrdbs::meta_node {
 
 
-struct entry_builder final : public tyrtech::message::struct_builder<2, 1>
+struct entry_builder final : public tyrtech::message::struct_builder<2, 9>
 {
     entry_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
+    void set_tid(uint64_t value)
+    {
+        *reinterpret_cast<uint64_t*>(m_static + 0) = value;
+    }
+
     void set_flags(uint8_t value)
     {
-        *reinterpret_cast<uint8_t*>(m_static + 0) = value;
+        *reinterpret_cast<uint8_t*>(m_static + 8) = value;
     }
 
     void add_key(const std::string_view& value)
     {
         set_offset<0>();
-        struct_builder<2, 1>::add_value(value);
+        struct_builder<2, 9>::add_value(value);
     }
 
     static constexpr uint16_t key_bytes_required()
@@ -34,7 +39,7 @@ struct entry_builder final : public tyrtech::message::struct_builder<2, 1>
     void add_value(const std::string_view& value)
     {
         set_offset<1>();
-        struct_builder<2, 1>::add_value(value);
+        struct_builder<2, 9>::add_value(value);
     }
 
     static constexpr uint16_t value_bytes_required()
@@ -43,7 +48,7 @@ struct entry_builder final : public tyrtech::message::struct_builder<2, 1>
     }
 };
 
-struct entry_parser final : public tyrtech::message::struct_parser<2, 1>
+struct entry_parser final : public tyrtech::message::struct_parser<2, 9>
 {
     entry_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -52,9 +57,14 @@ struct entry_parser final : public tyrtech::message::struct_parser<2, 1>
 
     entry_parser() = default;
 
+    decltype(auto) tid() const
+    {
+        return *reinterpret_cast<const uint64_t*>(m_static + 0);
+    }
+
     decltype(auto) flags() const
     {
-        return *reinterpret_cast<const uint8_t*>(m_static + 0);
+        return *reinterpret_cast<const uint8_t*>(m_static + 8);
     }
 
     bool has_key() const

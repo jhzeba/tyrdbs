@@ -237,6 +237,7 @@ bool impl::fetch_entries(context::reader* r, message::builder* builder)
 
         auto entry = entries.add_value();
 
+        entry.set_tid(r->iterator->tid());
         entry.set_flags(entry_flags);
         entry.add_key(key);
         entry.add_value(r->value_part.substr(0, part_size));
