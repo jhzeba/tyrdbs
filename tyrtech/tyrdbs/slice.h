@@ -7,6 +7,7 @@
 #include <tyrdbs/iterator.h>
 
 #include <memory>
+#include <vector>
 
 
 namespace tyrtech::tyrdbs {
@@ -88,5 +89,12 @@ private:
     friend class slice_writer;
     friend class slice_iterator;
 };
+
+
+using slice_ptr =
+        std::shared_ptr<slice>;
+
+using slices_t =
+        std::vector<slice_ptr>;
 
 }

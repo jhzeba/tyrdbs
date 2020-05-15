@@ -18,11 +18,11 @@ using namespace tyrtech;
 
 struct test_cb : public tyrdbs::meta_node::ushard::meta_callback
 {
-    void add(const tyrdbs::meta_node::ushard::slice_ptr& slice) override
+    void add(const tyrdbs::slice_ptr& slice) override
     {
     }
 
-    void remove(const tyrdbs::meta_node::ushard::slices_t& slices) override
+    void remove(const tyrdbs::slices_t& slices) override
     {
         for (auto&& slice : slices)
         {

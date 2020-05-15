@@ -32,7 +32,7 @@ struct impl : private disallow_copy
     {
         struct impl* impl;
 
-        tyrdbs::meta_node::ushard::slices_t snapshot;
+        tyrdbs::slices_t snapshot;
 
         context(struct impl* impl)
           : impl(impl)
@@ -80,11 +80,11 @@ struct impl : private disallow_copy
         {
         }
 
-        void add(const tyrtech::tyrdbs::meta_node::ushard::slice_ptr& slice) override
+        void add(const tyrdbs::slice_ptr& slice) override
         {
         }
 
-        void remove(const tyrtech::tyrdbs::meta_node::ushard::slices_t& slices) override
+        void remove(const tyrdbs::slices_t& slices) override
         {
             for (auto&& slice : slices)
             {

@@ -8,9 +8,9 @@
 namespace tyrtech::tyrdbs::meta_node {
 
 
-struct key_builder final : public tyrtech::message::struct_builder<2, 1>
+struct entry_builder final : public tyrtech::message::struct_builder<2, 1>
 {
-    key_builder(tyrtech::message::builder* builder)
+    entry_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
@@ -43,14 +43,14 @@ struct key_builder final : public tyrtech::message::struct_builder<2, 1>
     }
 };
 
-struct key_parser final : public tyrtech::message::struct_parser<2, 1>
+struct entry_parser final : public tyrtech::message::struct_parser<2, 1>
 {
-    key_parser(const tyrtech::message::parser* parser, uint16_t offset)
+    entry_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
     {
     }
 
-    key_parser() = default;
+    entry_parser() = default;
 
     decltype(auto) flags() const
     {
@@ -80,9 +80,9 @@ struct key_parser final : public tyrtech::message::struct_parser<2, 1>
 
 struct ushard_builder final : public tyrtech::message::struct_builder<1, 4>
 {
-    struct keys_builder final : public tyrtech::message::list_builder
+    struct entries_builder final : public tyrtech::message::list_builder
     {
-        keys_builder(tyrtech::message::builder* builder)
+        entries_builder(tyrtech::message::builder* builder)
           : list_builder(builder)
         {
         }
@@ -90,7 +90,7 @@ struct ushard_builder final : public tyrtech::message::struct_builder<1, 4>
         decltype(auto) add_value()
         {
             add_element();
-            return key_builder(m_builder);
+            return entry_builder(m_builder);
         }
     };
 
@@ -104,23 +104,23 @@ struct ushard_builder final : public tyrtech::message::struct_builder<1, 4>
         *reinterpret_cast<uint32_t*>(m_static + 0) = value;
     }
 
-    decltype(auto) add_keys()
+    decltype(auto) add_entries()
     {
         set_offset<0>();
-        return keys_builder(m_builder);
+        return entries_builder(m_builder);
     }
 
-    static constexpr uint16_t keys_bytes_required()
+    static constexpr uint16_t entries_bytes_required()
     {
-        return keys_builder::bytes_required();
+        return entries_builder::bytes_required();
     }
 };
 
 struct ushard_parser final : public tyrtech::message::struct_parser<1, 4>
 {
-    struct keys_parser final : public tyrtech::message::list_parser
+    struct entries_parser final : public tyrtech::message::list_parser
     {
-        keys_parser(const tyrtech::message::parser* parser, uint16_t offset)
+        entries_parser(const tyrtech::message::parser* parser, uint16_t offset)
           : list_parser(parser, offset)
         {
         }
@@ -144,7 +144,7 @@ struct ushard_parser final : public tyrtech::message::struct_parser<1, 4>
 
         decltype(auto) value() const
         {
-            return key_parser(m_parser, m_offset);
+            return entry_parser(m_parser, m_offset);
         }
     };
 
@@ -160,14 +160,14 @@ struct ushard_parser final : public tyrtech::message::struct_parser<1, 4>
         return *reinterpret_cast<const uint32_t*>(m_static + 0);
     }
 
-    bool has_keys() const
+    bool has_entries() const
     {
         return has_offset<0>();
     }
 
-    decltype(auto) keys() const
+    decltype(auto) entries() const
     {
-        return keys_parser(m_parser, offset<0>());
+        return entries_parser(m_parser, offset<0>());
     }
 };
 

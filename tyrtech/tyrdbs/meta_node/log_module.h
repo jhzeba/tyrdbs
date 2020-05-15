@@ -58,6 +58,9 @@ public:
     private:
         uint64_t next_handle();
 
+        writers_t::iterator get_writer(uint64_t handle);
+        readers_t::iterator get_reader(uint64_t handle);
+
     private:
         context(impl* impl);
 
@@ -105,8 +108,7 @@ private:
 
 private:
     bool fetch_entries(context::reader* r, message::builder* builder);
-    void update_entries(const message::parser* p, uint16_t off, context::writer* w);
-
+    void update_data(const message::parser* p, uint16_t off, context::writer* w);
 };
 
 }

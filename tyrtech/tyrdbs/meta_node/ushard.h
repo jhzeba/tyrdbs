@@ -2,8 +2,8 @@
 
 
 #include <tyrdbs/slice_writer.h>
+#include <tyrdbs/iterator.h>
 
-#include <vector>
 #include <unordered_map>
 
 
@@ -14,13 +14,6 @@ class ushard : private disallow_copy, disallow_move
 {
 public:
     static constexpr uint32_t max_slices_per_tier{4};
-
-public:
-    using slice_ptr =
-            std::shared_ptr<slice>;
-
-    using slices_t =
-            std::vector<slice_ptr>;
 
 public:
     struct meta_callback
