@@ -6,10 +6,10 @@
 #include <tyrdbs/key_buffer.h>
 
 
-namespace tyrtech::tyrdbs::iterators {
+namespace tyrtech::tyrdbs {
 
 
-class overwrite : public iterator
+class overwrite_iterator : public iterator
 {
 public:
     bool next() override;
@@ -21,10 +21,10 @@ public:
     uint64_t tid() const override;
 
 public:
-    overwrite(const std::string_view& min_key,
+    overwrite_iterator(const std::string_view& min_key,
               const std::string_view& max_key,
               slices_t slices);
-    overwrite(slices_t slices);
+    overwrite_iterator(slices_t slices);
 
 private:
     using element_t =

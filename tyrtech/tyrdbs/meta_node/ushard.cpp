@@ -1,4 +1,4 @@
-#include <tyrdbs/iterators/overwrite.h>
+#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/ushard.h>
 
 
@@ -8,12 +8,12 @@ namespace tyrtech::tyrdbs::meta_node {
 std::unique_ptr<iterator> ushard::range(const std::string_view& min_key,
                                         const std::string_view& max_key)
 {
-    return std::make_unique<iterators::overwrite>(min_key, max_key, get_slices());
+    return std::make_unique<overwrite_iterator>(min_key, max_key, get_slices());
 }
 
 std::unique_ptr<iterator> ushard::begin()
 {
-    return std::make_unique<iterators::overwrite>(get_slices());
+    return std::make_unique<overwrite_iterator>(get_slices());
 }
 
 void ushard::add(slice_ptr slice, meta_callback* cb)
@@ -33,7 +33,7 @@ uint64_t ushard::merge(slice_writer* target, uint32_t tier, meta_callback* cb)
 
     auto source_key_count = key_count(tier_slices);
 
-    iterators::overwrite it(tier_slices);
+    overwrite_iterator it(tier_slices);
 
     target->add(&it, false);
     target->flush();
@@ -61,7 +61,7 @@ uint64_t ushard::compact(slice_writer* target, meta_callback* cb)
 
     tier_map_t tier_map_checkpoint = m_tier_map;
 
-    iterators::overwrite it(slices);
+    overwrite_iterator it(slices);
 
     target->add(&it, true);
     target->flush();

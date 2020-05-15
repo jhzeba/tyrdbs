@@ -1,11 +1,11 @@
 #include <gt/async.h>
-#include <tyrdbs/iterators/overwrite.h>
+#include <tyrdbs/overwrite_iterator.h>
 
 
-namespace tyrtech::tyrdbs::iterators {
+namespace tyrtech::tyrdbs {
 
 
-bool overwrite::next()
+bool overwrite_iterator::next()
 {
     if (m_elements.size() == 0)
     {
@@ -52,32 +52,32 @@ bool overwrite::next()
     return false;
 }
 
-std::string_view overwrite::key() const
+std::string_view overwrite_iterator::key() const
 {
     return m_elements.back().second->key();
 }
 
-std::string_view overwrite::value() const
+std::string_view overwrite_iterator::value() const
 {
     return m_elements.back().second->value();
 }
 
-bool overwrite::eor() const
+bool overwrite_iterator::eor() const
 {
     return m_elements.back().second->eor();
 }
 
-bool overwrite::deleted() const
+bool overwrite_iterator::deleted() const
 {
     return m_elements.back().second->deleted();
 }
 
-uint64_t overwrite::tid() const
+uint64_t overwrite_iterator::tid() const
 {
     return m_elements.back().second->tid();
 }
 
-overwrite::overwrite(const std::string_view& min_key,
+overwrite_iterator::overwrite_iterator(const std::string_view& min_key,
                    const std::string_view& max_key,
                    slices_t slices)
 {
@@ -85,11 +85,11 @@ overwrite::overwrite(const std::string_view& min_key,
 
     auto jobs = gt::async::create_jobs();
 
-    for (auto&& slice : slices)
+    for (auto& slice : slices)
     {
         auto f = [this, slice = std::move(slice), &min_key, &max_key]
         {
-            auto&& it = slice->range(min_key, max_key);
+            auto it = slice->range(min_key, max_key);
 
             if (it == nullptr)
             {
@@ -121,13 +121,13 @@ overwrite::overwrite(const std::string_view& min_key,
     }
 }
 
-overwrite::overwrite(slices_t slices)
+overwrite_iterator::overwrite_iterator(slices_t slices)
 {
     m_elements.reserve(slices.size());
 
-    for (auto&& slice : slices)
+    for (auto& slice : slices)
     {
-        auto&& it = slice->begin();
+        auto it = slice->begin();
 
         if (it == nullptr)
         {
@@ -142,7 +142,7 @@ overwrite::overwrite(slices_t slices)
     }
 }
 
-bool overwrite::is_out_of_bounds()
+bool overwrite_iterator::is_out_of_bounds()
 {
     if (m_max_key.size() == 0)
     {
@@ -152,12 +152,12 @@ bool overwrite::is_out_of_bounds()
     return key().compare(m_max_key.data()) > 0;
 }
 
-bool overwrite::advance_last()
+bool overwrite_iterator::advance_last()
 {
     return m_elements.back().second->next();
 }
 
-bool overwrite::advance()
+bool overwrite_iterator::advance()
 {
     bool has_next = advance_last();
 
@@ -167,10 +167,10 @@ bool overwrite::advance()
         return m_elements.size() != 0;
     }
 
-    auto&& it = std::lower_bound(m_elements.begin(),
-                                 m_elements.end(),
-                                 m_elements.back(),
-                                 cmp());
+    auto it = std::lower_bound(m_elements.begin(),
+                               m_elements.end(),
+                               m_elements.back(),
+                               cmp());
 
     if (it != --m_elements.end())
     {
