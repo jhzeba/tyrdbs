@@ -3,6 +3,7 @@ Import('BUILD_DIR')
 
 
 net_sources = [
+    'socket_channel.cpp'
 ]
 
 env.StaticLibrary(target='{0}/net'.format(BUILD_DIR), source=net_sources)

@@ -26,16 +26,22 @@ struct impl : private disallow_copy
 
     uint64_t requests{0};
 
-    context create_context(const std::shared_ptr<io::channel>& remote)
+    context create_context(const std::shared_ptr<io::socket>& remote)
     {
         return context();
     }
 
     void ping(const ping::request_parser_t& request,
-              ping::response_builder_t* response,
+              net::socket_channel* channel,
               context* ctx)
     {
-        response->add_sequence(request.sequence());
+        net::rpc_response<tests::ping::ping> response(channel);
+
+        auto message = response.add_message();
+        message.add_sequence(request.sequence());
+
+        response.send();
+
         requests++;
     }
 
@@ -71,7 +77,7 @@ using ping_service_t =
         tests::ping_service<module::impl>;
 
 using server_t =
-        net::rpc_server<8192, ping_service_t>;
+        net::rpc_server<ping_service_t>;
 
 
 int main(int argc, const char* argv[])
@@ -102,7 +108,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     module::impl p;
     ping_service_t srv(&p);

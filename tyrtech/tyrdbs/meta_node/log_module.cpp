@@ -1,5 +1,6 @@
 #include <common/uuid.h>
 #include <gt/async.h>
+#include <net/rpc_response.h>
 #include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 #include <tyrdbs/meta_node/data.json.h>
@@ -26,7 +27,7 @@ impl::context& impl::context::operator=(impl::context&& other) noexcept
     return *this;
 }
 
-impl::context impl::create_context(const std::shared_ptr<io::channel>& remote)
+impl::context impl::create_context(const std::shared_ptr<io::socket>& remote)
 {
     return context(this);
 }
@@ -42,7 +43,7 @@ impl::context::writers_t::iterator impl::context::get_writer(uint64_t handle)
 
     if (it == m_writers.end())
     {
-        throw invalid_handle_exception("{:016x}: handle not found", handle);
+        throw invalid_handle_exception("{}: handle not found", handle);
     }
 
     return it;
@@ -54,81 +55,96 @@ impl::context::readers_t::iterator impl::context::get_reader(uint64_t handle)
 
     if (it == m_readers.end())
     {
-        throw invalid_handle_exception("{:016x}: handle not found", handle);
+        throw invalid_handle_exception("{}: handle not found", handle);
     }
 
     return it;
 }
 
 void impl::update(const update::request_parser_t& request,
-                  update::response_builder_t* response,
+                  net::socket_channel* channel,
                   context* ctx)
 {
-    if (request.has_handle() == false)
-    {
-        context::writer w;
+    net::rpc_response<log::update> response(channel);
+    auto message = response.add_message();
 
-        update_data(request.get_parser(), request.data(), &w);
+    // if (request.has_handle() == false)
+    // {
+    //     context::writer w;
 
-        auto handle = ctx->next_handle();
+    //     update_data(request.get_parser(), request.data(), &w);
 
-        ctx->m_writers[handle] = std::move(w);
-        response->add_handle(handle);
-    }
-    else
+    //     auto handle = ctx->next_handle();
+
+    //     ctx->m_writers[handle] = std::move(w);
+    //     message.add_handle(handle);
+    // }
+    // else
+    // {
+    //     auto handle = request.handle();
+    //     auto it = ctx->get_writer(handle);
+
+    //     update_data(request.get_parser(), request.data(), &it->second);
+    // }
+    message.add_handle(1);
+
+    response.send();
+}
+
+void impl::commit(const commit::request_parser_t& request,
+                  net::socket_channel* channel,
+                  context* ctx)
+{
+    net::rpc_response<log::commit> response(channel);
+    auto message = response.add_message();
+
+    if (request.has_handle() == true)
     {
         auto handle = request.handle();
         auto it = ctx->get_writer(handle);
 
-        update_data(request.get_parser(), request.data(), &it->second);
-    }
-}
+        for (auto& it : it->second.slice_writers)
+        {
+            // m_slice_count++;
 
-void impl::commit(const commit::request_parser_t& request,
-                  commit::response_builder_t* response,
-                  context* ctx)
-{
-    if (request.has_handle() == false)
-    {
-        return;
-    }
+            // auto slice = std::make_shared<tyrdbs::slice>(it.second->commit(),
+            //                                              it.second->path());
+            // slice->set_tid(m_next_tid++);
 
-    auto handle = request.handle();
-    auto it = ctx->get_writer(handle);
+            // m_ushards[it.first % m_ushards.size()].emplace_back(std::move(slice));
+        }
 
-    for (auto& it : it->second.slice_writers)
-    {
-        m_slice_count++;
-
-        auto slice = std::make_shared<tyrdbs::slice>(it.second->commit(),
-                                                     it.second->path());
-        slice->set_tid(m_next_tid++);
-
-        m_ushards[it.first % m_ushards.size()].emplace_back(std::move(slice));
+        ctx->m_writers.erase(it);
     }
 
-    ctx->m_writers.erase(it);
+    response.send();
 }
 
 void impl::rollback(const rollback::request_parser_t& request,
-                    rollback::response_builder_t* response,
+                    net::socket_channel* channel,
                     context* ctx)
 {
-    if (request.has_handle() == false)
+    net::rpc_response<log::rollback> response(channel);
+    auto message = response.add_message();
+
+    if (request.has_handle() == true)
     {
-        return;
+        auto handle = request.handle();
+        auto it = ctx->get_writer(handle);
+
+        ctx->m_writers.erase(it);
     }
 
-    auto handle = request.handle();
-    auto it = ctx->get_writer(handle);
-
-    ctx->m_writers.erase(it);
+    response.send();
 }
 
 void impl::fetch(const fetch::request_parser_t& request,
-                 fetch::response_builder_t* response,
+                 net::socket_channel* channel,
                  context* ctx)
 {
+    net::rpc_response<log::fetch> response(channel);
+    auto message = response.add_message();
+
     if (request.has_handle() == false)
     {
         auto ushard = m_ushards[request.ushard() % m_ushards.size()];
@@ -143,12 +159,12 @@ void impl::fetch(const fetch::request_parser_t& request,
             r.iterator = std::move(it);
             r.value_part = r.iterator->value();
 
-            if (fetch_entries(&r, response->add_data()) == false)
+            if (fetch_entries(&r, message.add_data()) == false)
             {
                 auto handle = ctx->next_handle();
 
                 ctx->m_readers[handle] = std::move(r);
-                response->add_handle(handle);
+                message.add_handle(handle);
             }
         }
     }
@@ -157,30 +173,35 @@ void impl::fetch(const fetch::request_parser_t& request,
         auto handle = request.handle();
         auto it = ctx->get_reader(handle);
 
-        if (fetch_entries(&it->second, response->add_data()) == true)
+        if (fetch_entries(&it->second, message.add_data()) == true)
         {
             ctx->m_readers.erase(handle);
         }
         else
         {
-            response->add_handle(handle);
+            message.add_handle(handle);
         }
     }
+
+    response.send();
 }
 
 void impl::abort(const abort::request_parser_t& request,
-                 abort::response_builder_t* response,
+                 net::socket_channel* channel,
                  context* ctx)
 {
-    if (request.has_handle() == false)
+    net::rpc_response<log::fetch> response(channel);
+    auto message = response.add_message();
+
+    if (request.has_handle() == true)
     {
-        return;
+        auto handle = request.handle();
+        auto it = ctx->get_reader(handle);
+
+        ctx->m_readers.erase(it);
     }
 
-    auto handle = request.handle();
-    auto it = ctx->get_reader(handle);
-
-    ctx->m_readers.erase(it);
+    response.send();
 }
 
 bool impl::fetch_entries(context::reader* r, message::builder* builder)
@@ -346,7 +367,7 @@ void impl::compact_if_needed(uint32_t ushard)
     m_slice_count++;
 
     auto slice = std::make_shared<tyrdbs::slice>(slice_writer->commit(),
-                                                 slice_writer->path());
+                                                 "");//slice_writer->path());
 
     m_ushards[ushard].erase(m_ushards[ushard].begin(),
                             m_ushards[ushard].begin() + slices.size());
@@ -375,7 +396,7 @@ impl::slice_writer_ptr impl::new_slice_writer()
 
     char buff[37];
 
-    return std::make_shared<tyrdbs::slice_writer>("{}.dat", uuid().str(buff, sizeof(buff)));
+    return std::make_shared<tyrdbs::slice_writer>(nullptr);//"{}.dat", uuid().str(buff, sizeof(buff)));
 }
 
 void impl::merge_thread()
@@ -410,7 +431,7 @@ impl::impl(const std::string_view& path,
 
     for (uint32_t i = 0; i < merge_threads; i++)
     {
-        gt::create_thread(&impl::merge_thread, this);
+        //gt::create_thread(&impl::merge_thread, this);
     }
 }
 

@@ -5,8 +5,7 @@
 #include <common/disallow_move.h>
 #include <common/buffered_reader.h>
 #include <common/logger.h>
-#include <io/channel_reader.h>
-#include <net/service.json.h>
+#include <net/rpc_response.h>
 #include <net/server_exception.h>
 
 #include <unordered_set>
@@ -16,13 +15,13 @@
 namespace tyrtech::net {
 
 
-template<uint16_t buffer_size, typename T>
+template<typename T>
 class rpc_server : private disallow_copy, disallow_move
 {
 public:
     void terminate()
     {
-        m_channel->disconnect();
+        m_socket->disconnect();
 
         for (auto&& remote : m_remotes)
         {
@@ -32,32 +31,29 @@ public:
 
     std::string_view uri() const
     {
-        return m_channel->uri();
+        return m_socket->uri();
     }
 
 public:
-    rpc_server(std::shared_ptr<io::channel> channel, T* service)
-      : m_channel(std::move(channel))
+    rpc_server(std::shared_ptr<io::socket> socket, T* service)
+      : m_socket(std::move(socket))
       , m_service(service)
     {
         gt::create_thread(&rpc_server::server_thread, this);
     }
 
 private:
-    using channel_t =
-            std::shared_ptr<io::channel>;
+    using socket_ptr =
+            std::shared_ptr<io::socket>;
 
     using remotes_t =
-            std::unordered_set<channel_t>;
+            std::unordered_set<socket_ptr>;
 
     using buffer_t =
-            std::array<char, buffer_size>;
-
-    using reader_t =
-            buffered_reader<buffer_t, io::channel_reader>;
+            std::array<char, socket_channel::buffer_size>;
 
 private:
-    channel_t m_channel;
+    socket_ptr m_socket;
     remotes_t m_remotes;
 
     T* m_service{nullptr};
@@ -65,19 +61,19 @@ private:
 private:
     void server_thread()
     {
-        logger::debug("{}: server started", m_channel->uri());
+        logger::debug("{}: server started", m_socket->uri());
 
         while (true)
         {
-            channel_t remote;
+            socket_ptr remote;
 
             try
             {
-                remote = m_channel->accept();
+                remote = m_socket->accept();
             }
-            catch (io::channel::disconnected_exception&)
+            catch (io::socket::disconnected_exception&)
             {
-                logger::debug("{}: server shutdown", m_channel->uri());
+                logger::debug("{}: server shutdown", m_socket->uri());
 
                 break;
             }
@@ -85,76 +81,68 @@ private:
             gt::create_thread(&rpc_server::worker_thread, this, std::move(remote));
         }
 
-        m_channel.reset();
+        m_socket.reset();
     }
 
-    void worker_thread(const channel_t& remote)
+    void worker_thread(socket_ptr remote)
     {
-        m_remotes.insert(remote);
+        socket_channel channel(std::move(remote), 0);
 
-        logger::debug("{}: connected", remote->uri());
+        logger::debug("{}: connected", channel.uri());
+
+        m_remotes.insert(channel.remote());
 
         try
         {
-            buffer_t recv_buffer;
-            io::channel_reader channel_reader(remote.get());
-
-            reader_t reader(&recv_buffer, &channel_reader);
-
-            auto ctx = m_service->create_context(remote);
+            auto ctx = m_service->create_context(channel.remote());
 
             while (true)
             {
-                buffer_t message_buffer;
-                uint16_t* message_size = reinterpret_cast<uint16_t*>(message_buffer.data());
+                buffer_t request_buffer;
+                uint16_t* request_size = reinterpret_cast<uint16_t*>(request_buffer.data());
 
-                reader.read(message_size);
+                channel.read(request_size);
 
-                if (unlikely(*message_size > buffer_size - sizeof(uint16_t)))
+                if (unlikely(*request_size > socket_channel::buffer_size - sizeof(uint16_t)))
                 {
-                    logger::error("{}: message too big, disconnecting...", remote->uri());
+                    logger::error("{}: request too big, disconnecting...", channel.uri());
 
                     break;
                 }
 
-                reader.read(message_buffer.data() + sizeof(uint16_t), *message_size);
+                channel.read(request_buffer.data() + sizeof(uint16_t), *request_size);
 
-                message::parser parser(message_buffer.data(),
-                                       *message_size + sizeof(uint16_t));
+                message::parser parser(request_buffer.data(),
+                                       *request_size + sizeof(uint16_t));
                 service::request_parser request(&parser, 0);
-
-                buffer_t send_buffer;
-
-                message::builder builder(send_buffer.data(), send_buffer.size());
-                service::response_builder response(&builder);
 
                 try
                 {
-                    m_service->process_message(request, &response, &ctx);
+                    m_service->process_message(request, &channel, &ctx);
                 }
                 catch (server_error_exception& e)
                 {
+                    rpc_response<std::void_t<>> response(&channel);
+
                     auto error = response.add_error();
 
                     error.add_code(e.code());
                     error.add_message(e.what());
+
+                    response.send();
                 }
-
-                response.finalize();
-
-                remote->send_all(send_buffer.data(), builder.size(), 0);
             }
         }
-        catch (io::channel::disconnected_exception&)
+        catch (io::socket::disconnected_exception&)
         {
-            logger::debug("{}: disconnected", remote->uri());
+            logger::debug("{}: disconnected", channel.uri());
         }
         catch (message::malformed_message_exception&)
         {
-            logger::error("{}: invalid message, disconnecting...", remote->uri());
+            logger::error("{}: invalid message, disconnecting...", channel.uri());
         }
 
-        m_remotes.erase(remote);
+        m_remotes.erase(channel.remote());
     }
 };
 

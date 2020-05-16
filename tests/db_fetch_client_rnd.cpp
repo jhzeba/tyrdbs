@@ -3,7 +3,7 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
-#include <net/rpc_client.h>
+#include <net/rpc_request.h>
 
 #include <tests/db_server_service.json.h>
 #include <tests/data.json.h>
@@ -17,7 +17,7 @@ using namespace tyrtech;
 
 void fetch_thread(const std::string_view& uri, uint32_t seed, FILE* stats_fd)
 {
-    net::rpc_client<8192> c(io::uri::connect(uri, 0));
+    net::socket_channel channel(io::uri::connect(uri, 0), 0);
 
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));
@@ -26,30 +26,29 @@ void fetch_thread(const std::string_view& uri, uint32_t seed, FILE* stats_fd)
 
     while (true)
     {
-        auto fetch_data = c.remote_call<tests::collections::fetch_data>();
-
-        auto req = fetch_data.request();
+        net::rpc_request<tests::collections::fetch_data> request(&channel);
+        auto message = request.add_message();
 
         uint64_t key = __builtin_bswap64(distribution(generator));
         std::string_view key_str(reinterpret_cast<const char*>(&key), sizeof(key));
 
-        req.add_min_key(key_str);
-        req.add_max_key(key_str);
-        req.add_ushard(__builtin_bswap64(key));
+        message.add_min_key(key_str);
+        message.add_max_key(key_str);
+        message.add_ushard(__builtin_bswap64(key));
+
+        tests::collections::fetch_data::response_parser_t response;
 
         {
             auto sw = s->stopwatch();
 
-            fetch_data.execute();
-            fetch_data.wait();
+            request.execute();
+            response = request.wait();
         }
 
-        auto res = fetch_data.response();
+        assert(response.has_handle() == false);
+        assert(response.has_data() == true);
 
-        assert(res.has_handle() == false);
-        assert(res.has_data() == true);
-
-        tests::data_parser data(res.get_parser(), res.data());
+        tests::data_parser data(response.get_parser(), response.data());
         assert((data.flags() & 0x01) == 0x01);
 
         auto&& dbs = data.collections();
@@ -159,7 +158,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     FILE* stats_fd = nullptr;
 

@@ -51,19 +51,16 @@ public:
         read(reinterpret_cast<char*>(data), sizeof(T));
     }
 
-    char read()
+    template<typename T = SourceType>
+    uint64_t offset(typename std::enable_if<!std::is_void<T>::value, bool>::type has_sink = true) const
     {
-        if (unlikely(m_offset == m_size))
-        {
-            load();
+        return m_offset + m_source->offset();
+    }
 
-            if (unlikely(m_offset == m_size))
-            {
-                throw exception("no more data in source");
-            }
-        }
-
-        return *(m_buffer->data() + m_offset++);
+    template<typename T = SourceType>
+    uint64_t offset(typename std::enable_if<std::is_void<T>::value, bool>::type has_sink = false) const
+    {
+        return m_offset;
     }
 
 public:

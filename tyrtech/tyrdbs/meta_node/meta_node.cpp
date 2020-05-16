@@ -5,7 +5,7 @@
 #include <gt/async.h>
 #include <io/engine.h>
 #include <io/file.h>
-#include <io/channel.h>
+#include <io/socket.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/meta_node/service.h>
 
@@ -95,7 +95,7 @@ int main(int argc, const char* argv[])
 
         io::initialize(cmd.get<uint32_t>("iouring-queue-depth"));
         io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
-        io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+        io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
         tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 

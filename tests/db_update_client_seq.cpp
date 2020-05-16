@@ -5,7 +5,7 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
-#include <net/rpc_client.h>
+#include <net/rpc_request.h>
 
 #include <tests/db_server_service.json.h>
 #include <tests/data.json.h>
@@ -118,7 +118,7 @@ void update_thread(const std::string_view& uri,
                    uint32_t target_rate,
                    FILE* stats_fd)
 {
-    net::rpc_client<8192> c(io::uri::connect(uri, 0));
+    net::socket_channel channel(io::uri::connect(uri, 0), 0);
 
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));
@@ -151,28 +151,27 @@ void update_thread(const std::string_view& uri,
 
         while (true)
         {
-            auto update_data = c.remote_call<tests::collections::update_data>();
-
-            auto req = update_data.request();
+            net::rpc_request<tests::collections::update_data> request(&channel);
+            auto message = request.add_message();
 
             if (handle != 0)
             {
-                req.add_handle(handle);
+                message.add_handle(handle);
             }
 
-            bool done = fill_entries(&r, req.add_data(), group_bits, ushard_bits);
+            bool done = fill_entries(&r, message.add_data(), group_bits, ushard_bits);
 
-            update_data.execute();
-            update_data.wait();
+            request.execute();
+            auto response = request.wait();
 
             if (handle == 0)
             {
-                assert(update_data.response().has_handle() == true);
-                handle = update_data.response().handle();
+                assert(response.has_handle() == true);
+                handle = response.handle();
             }
             else
             {
-                assert(update_data.response().has_handle() == false);
+                assert(response.has_handle() == false);
             }
 
             if (done == true)
@@ -183,14 +182,13 @@ void update_thread(const std::string_view& uri,
             assert(handle != 0);
         }
 
-        auto commit_update = c.remote_call<tests::collections::commit_update>();
+        net::rpc_request<tests::collections::commit_update> request(&channel);
+        auto message = request.add_message();
 
-        auto req = commit_update.request();
+        message.add_handle(handle);
 
-        req.add_handle(handle);
-
-        commit_update.execute();
-        commit_update.wait();
+        request.execute();
+        request.wait();
 
         auto t2 = clock::now();
 
@@ -309,7 +307,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     FILE* stats_fd = nullptr;
 

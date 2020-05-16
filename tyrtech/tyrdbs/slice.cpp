@@ -192,7 +192,7 @@ slice::slice(uint64_t size, io::file&& file)
 {
     header h;
 
-    m_file.pread(size - node::page_size,
+    m_file.pread(size - sizeof(h),
                  reinterpret_cast<char*>(&h),
                  sizeof(h));
 

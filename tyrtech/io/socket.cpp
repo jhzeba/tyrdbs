@@ -2,7 +2,7 @@
 #include <common/system_error.h>
 #include <common/clock.h>
 #include <io/engine.h>
-#include <io/channel.h>
+#include <io/socket.h>
 #include <io/queue_flow.h>
 
 #include <sys/socket.h>
@@ -18,12 +18,12 @@ namespace tyrtech::io {
 static thread_local std::unique_ptr<queue_flow> __queue_flow;
 
 
-void channel::initialize(uint32_t queue_size)
+void socket::initialize(uint32_t queue_size)
 {
     __queue_flow = std::make_unique<queue_flow>(queue_size);
 }
 
-uint32_t channel::recv(char* data, uint32_t size, uint64_t timeout)
+uint32_t socket::recv(char* data, uint32_t size, uint64_t timeout)
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -58,7 +58,7 @@ uint32_t channel::recv(char* data, uint32_t size, uint64_t timeout)
     }
 }
 
-uint32_t channel::send(const char* data, uint32_t size, uint64_t timeout)
+uint32_t socket::send(const char* data, uint32_t size, uint64_t timeout)
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -93,46 +93,22 @@ uint32_t channel::send(const char* data, uint32_t size, uint64_t timeout)
     }
 }
 
-void channel::send_all(const char* data, uint32_t size, uint64_t timeout)
-{
-    while (size != 0)
-    {
-        uint64_t t1 = clock::now();
-
-        uint32_t res = send(data, size, timeout);
-
-        uint64_t send_took = clock::now() - t1;
-
-        if (likely(timeout > send_took))
-        {
-            timeout -= send_took;
-        }
-        else
-        {
-            timeout = 1;
-        }
-
-        data += res;
-        size -= res;
-    }
-}
-
-void channel::disconnect()
+void socket::disconnect()
 {
     ::shutdown(m_fd, SHUT_RDWR);
 }
 
-std::string_view channel::uri() const
+std::string_view socket::uri() const
 {
     return m_uri_view;
 }
 
-channel::channel(int32_t fd)
+socket::socket(int32_t fd)
   : m_fd(fd)
 {
 }
 
-channel::~channel()
+socket::~socket()
 {
     if (unlikely(m_fd == -1))
     {
@@ -143,7 +119,7 @@ channel::~channel()
     m_fd = -1;
 }
 
-void channel::connect(const void* address, uint32_t address_size, uint64_t timeout)
+void socket::connect(const void* address, uint32_t address_size, uint64_t timeout)
 {
     queue_flow::resource r(*__queue_flow);
 
@@ -181,7 +157,7 @@ void channel::connect(const void* address, uint32_t address_size, uint64_t timeo
     }
 }
 
-void channel::listen(const void* address, uint32_t address_size)
+void socket::listen(const void* address, uint32_t address_size)
 {
     if (unlikely(::bind(m_fd,
                         reinterpret_cast<const sockaddr*>(address),
@@ -205,7 +181,7 @@ void channel::listen(const void* address, uint32_t address_size)
     }
 }
 
-void channel::accept(int32_t* fd, void* address, uint32_t address_size)
+void socket::accept(int32_t* fd, void* address, uint32_t address_size)
 {
     queue_flow::resource r(*__queue_flow);
 

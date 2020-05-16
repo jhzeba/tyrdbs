@@ -3,7 +3,7 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
-#include <net/rpc_client.h>
+#include <net/rpc_request.h>
 
 #include <tests/stats.h>
 #include <tests/ping_module.json.h>
@@ -14,24 +14,21 @@ using namespace tyrtech;
 
 void client(uint32_t iterations, const std::string_view& uri, tests::stats* s)
 {
-    net::rpc_client<8192> c(io::uri::connect(uri, 0));
+    net::socket_channel channel(io::uri::connect(uri, 0), 0);
 
     for (uint32_t i = 0; i < iterations; i++)
     {
-        auto ping = c.remote_call<tests::ping::ping>();
+        net::rpc_request<tests::ping::ping> request(&channel);
 
-        auto req = ping.request();
-        req.add_sequence(i);
+        auto message = request.add_message();
+        message.add_sequence(i);
 
-        {
-            auto sw = s->stopwatch();
+        auto sw = s->stopwatch();
 
-            ping.execute();
-            ping.wait();
-        }
+        request.execute();
 
-        auto res = ping.response();
-        assert(i == res.sequence());
+        auto response = request.wait();
+        assert(i == response.sequence());
     }
 }
 
@@ -78,7 +75,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     std::vector<tests::stats> s;
 

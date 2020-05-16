@@ -73,34 +73,6 @@ public:
     {
     }
 
-    void add_padding_to(uint32_t size)
-    {
-        assert(likely(size >= m_offset));
-
-        std::memset(m_buffer->data() + m_offset, 0, size - m_offset);
-        m_offset = size;
-    }
-
-    void add_alignment_to(uint32_t alignment)
-    {
-        assert(likely(__builtin_popcount(alignment) == 1));
-
-        uint32_t mask = alignment - 1;
-        uint32_t size = m_offset;
-
-        if ((size & mask) != 0)
-        {
-            size += alignment - (size & mask);
-        }
-
-        add_padding_to(size);
-    }
-
-    bool empty() const
-    {
-        return m_offset == 0;
-    }
-
     template<typename T = SinkType>
     uint64_t offset(typename std::enable_if<!std::is_void<T>::value, bool>::type has_sink = true) const
     {

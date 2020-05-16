@@ -7,7 +7,7 @@
 namespace tyrtech::gt {
 
 
-static constexpr uint32_t stack_size{0x10000U};
+static constexpr uint32_t stack_size{0x40000U};
 
 
 struct context : private disallow_copy, disallow_move

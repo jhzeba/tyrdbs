@@ -15,7 +15,7 @@ using service_t =
         service<log::impl>;
 
 using server_t =
-        net::rpc_server<8192, service_t>;
+        net::rpc_server<service_t>;
 
 
 void service_thread(const std::string_view& uri,

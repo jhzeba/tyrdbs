@@ -1,6 +1,6 @@
 #include <common/branch_prediction.h>
-#include <io/tcp_channel.h>
-#include <io/unix_channel.h>
+#include <io/tcp_socket.h>
+#include <io/unix_socket.h>
 #include <io/uri.h>
 
 #include <regex>
@@ -82,7 +82,7 @@ decltype(auto) parse(const std::string_view& uri)
 }
 
 
-std::shared_ptr<channel> connect(const std::string_view& uri, uint64_t timeout)
+std::shared_ptr<socket> connect(const std::string_view& uri, uint64_t timeout)
 {
     auto params = parse(uri);
 
@@ -103,7 +103,7 @@ std::shared_ptr<channel> connect(const std::string_view& uri, uint64_t timeout)
     }
 }
 
-std::shared_ptr<channel> listen(const std::string_view& uri)
+std::shared_ptr<socket> listen(const std::string_view& uri)
 {
     auto params = parse(uri);
 

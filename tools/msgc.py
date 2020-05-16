@@ -563,7 +563,7 @@ struct module : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::service::response_builder* service_response,
+                         tyrtech::net::socket_channel* channel,
                          typename Implementation::context* ctx)
     {
         switch (service_request.function())
@@ -574,14 +574,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename {{func.name}}::request_parser_t;
 
-                using response_builder_t =
-                        typename {{func.name}}::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->{{func.name}}(request, &response, ctx);
+                impl->{{func.name}}(request, channel, ctx);
 
                 break;
             }
@@ -593,7 +589,7 @@ struct module : private tyrtech::disallow_copy
         }
     }
 
-    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::channel>& remote)
+    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
     {
         return impl->create_context(remote);
     }
@@ -649,7 +645,7 @@ def modules_generator(data, output):
     modules_template = '''#pragma once
 
 
-#include <io/channel.h>
+#include <net/socket_channel.h>
 #include <net/server_exception.h>
 #include <net/service.json.h>
 
@@ -674,7 +670,7 @@ def services_generator(data, output):
     services_template = '''#pragma once
 
 
-#include <io/channel.h>
+#include <net/socket_channel.h>
 #include <net/server_exception.h>
 #include <net/service.json.h>
 
@@ -731,7 +727,7 @@ struct {{service.name}} : private tyrtech::disallow_copy
         }
     };
 
-    context create_context(const std::shared_ptr<tyrtech::io::channel>& remote)
+    context create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
     {
         return context(
 {% for module in service.modules %}
@@ -742,7 +738,7 @@ struct {{service.name}} : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::service::response_builder* service_response,
+                         tyrtech::net::socket_channel* channel,
                          context* ctx)
     {
         switch (service_request.module())
@@ -750,7 +746,7 @@ struct {{service.name}} : private tyrtech::disallow_copy
 {% for module in service.modules %}
             case {{module}}::id:
             {
-                {{module}}.process_message(service_request, service_response, &ctx->{{module}}_ctx);
+                {{module}}.process_message(service_request, channel, &ctx->{{module}}_ctx);
 
                 break;
             }

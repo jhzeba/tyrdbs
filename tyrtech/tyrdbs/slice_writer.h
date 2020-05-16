@@ -2,7 +2,7 @@
 
 
 #include <common/buffered_writer.h>
-#include <io/file_writer.h>
+#include <io/channel.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/node_writer.h>
 #include <tyrdbs/key_buffer.h>
@@ -26,16 +26,11 @@ public:
     void flush();
     uint64_t commit();
 
-    std::string_view path() const;
-
 public:
-    template<typename... Arguments>
-    slice_writer(Arguments&&... arguments)
-      : m_file(io::file::create(std::forward<Arguments>(arguments)...))
+    slice_writer(io::channel* channel)
+      : m_writer(&m_buffer, channel)
     {
     }
-
-    ~slice_writer();
 
 private:
     class index_writer : private disallow_copy, disallow_move
@@ -70,21 +65,17 @@ private:
             std::array<char, node::page_size>;
 
     using writer_t =
-            buffered_writer<buffer_t, io::file_writer>;
+            buffered_writer<buffer_t, io::channel>;
 
 private:
     key_buffer m_first_key;
     key_buffer m_last_key;
 
     bool m_last_eor{true};
-
     bool m_commited{false};
 
     buffer_t m_buffer;
-    io::file m_file;
-
-    io::file_writer m_file_writer{&m_file, 0};
-    writer_t m_writer{&m_buffer, &m_file_writer};
+    writer_t m_writer;
 
     node_writer m_node;
     index_writer m_index{this};

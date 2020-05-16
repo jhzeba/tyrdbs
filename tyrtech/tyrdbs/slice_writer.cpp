@@ -165,10 +165,7 @@ void slice_writer::flush()
     m_last_node->set_next(location::invalid_size);
 
     m_writer.write(location::invalid_size);
-    m_writer.add_padding_to(node::page_size);
-
     m_writer.write(m_header);
-    m_writer.add_padding_to(node::page_size);
 
     m_writer.flush();
 }
@@ -181,19 +178,6 @@ uint64_t slice_writer::commit()
     m_commited = true;
 
     return m_writer.offset();
-}
-
-std::string_view slice_writer::path() const
-{
-    return m_file.path();
-}
-
-slice_writer::~slice_writer()
-{
-    if (m_commited == false)
-    {
-        m_file.unlink();
-    }
 }
 
 bool slice_writer::check(const std::string_view& key,

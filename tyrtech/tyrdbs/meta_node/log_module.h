@@ -75,27 +75,27 @@ public:
     };
 
 public:
-    context create_context(const std::shared_ptr<io::channel>& remote);
+    context create_context(const std::shared_ptr<io::socket>& remote);
 
 public:
     void update(const update::request_parser_t& request,
-                update::response_builder_t* response,
+                net::socket_channel* channel,
                 context* ctx);
 
     void commit(const commit::request_parser_t& request,
-                commit::response_builder_t* response,
+                net::socket_channel* channel,
                 context* ctx);
 
     void rollback(const rollback::request_parser_t& request,
-                  rollback::response_builder_t* response,
+                  net::socket_channel* channel,
                   context* ctx);
 
     void fetch(const fetch::request_parser_t& request,
-               fetch::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx);
 
     void abort(const abort::request_parser_t& request,
-               abort::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx);
 
 public:

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <io/channel.h>
+#include <net/socket_channel.h>
 #include <net/server_exception.h>
 #include <net/service.json.h>
 
@@ -37,7 +37,7 @@ struct ping_service : private tyrtech::disallow_copy
         }
     };
 
-    context create_context(const std::shared_ptr<tyrtech::io::channel>& remote)
+    context create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
     {
         return context(
             ping.create_context(remote)
@@ -45,14 +45,14 @@ struct ping_service : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::service::response_builder* service_response,
+                         tyrtech::net::socket_channel* channel,
                          context* ctx)
     {
         switch (service_request.module())
         {
             case ping::id:
             {
-                ping.process_message(service_request, service_response, &ctx->ping_ctx);
+                ping.process_message(service_request, channel, &ctx->ping_ctx);
 
                 break;
             }

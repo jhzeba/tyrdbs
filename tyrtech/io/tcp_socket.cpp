@@ -1,6 +1,6 @@
 #include <common/branch_prediction.h>
 #include <common/system_error.h>
-#include <io/tcp_channel.h>
+#include <io/tcp_socket.h>
 
 #include <cassert>
 #include <netinet/in.h>
@@ -12,21 +12,21 @@
 namespace tyrtech::io::tcp {
 
 
-class channel : public io::channel
+class tcp_socket : public io::socket
 {
 public:
-    static std::shared_ptr<io::channel> connect(const std::string_view& host,
-                                                const std::string_view& service,
-                                                uint64_t timeout);
+    static std::shared_ptr<io::socket> connect(const std::string_view& host,
+                                               const std::string_view& service,
+                                               uint64_t timeout);
 
-    static std::shared_ptr<io::channel> listen(const std::string_view& host,
-                                               const std::string_view& service);
-
-public:
-    std::shared_ptr<io::channel> accept() override;
+    static std::shared_ptr<io::socket> listen(const std::string_view& host,
+                                              const std::string_view& service);
 
 public:
-    channel(int32_t fd, const sockaddr_in& addr);
+    std::shared_ptr<io::socket> accept() override;
+
+public:
+    tcp_socket(int32_t fd, const sockaddr_in& addr);
 
 private:
     void to_uri(const sockaddr_in& addr);
@@ -69,7 +69,7 @@ sockaddr_in resolve(const std::string_view& host, const std::string_view& servic
 
     if (res != 0)
     {
-        throw channel::address_not_found_exception("tcp://{}:{}", host, service);
+        throw socket::address_not_found_exception("tcp://{}:{}", host, service);
     }
 
     assert(likely(sizeof(addr) == returned_addrs->ai_addrlen));
@@ -80,43 +80,43 @@ sockaddr_in resolve(const std::string_view& host, const std::string_view& servic
     return addr;
 }
 
-std::shared_ptr<io::channel> channel::connect(const std::string_view& host,
-                                              const std::string_view& service,
-                                              uint64_t timeout)
+std::shared_ptr<io::socket> tcp_socket::connect(const std::string_view& host,
+                                                const std::string_view& service,
+                                                uint64_t timeout)
 {
     auto addr = resolve(host, service);
 
-    auto c = std::make_shared<channel>(create_socket(), addr);
+    auto c = std::make_shared<tcp_socket>(create_socket(), addr);
 
-    c->io::channel::connect(&addr, sizeof(addr), timeout);
+    c->io::socket::connect(&addr, sizeof(addr), timeout);
 
-    return std::static_pointer_cast<io::channel>(c);
+    return c;
 }
 
-std::shared_ptr<io::channel> channel::listen(const std::string_view& host,
-                                             const std::string_view& service)
+std::shared_ptr<io::socket> tcp_socket::listen(const std::string_view& host,
+                                              const std::string_view& service)
 {
     auto addr = resolve(host, service);
 
-    auto c = std::make_shared<channel>(create_socket(), addr);
+    auto c = std::make_shared<tcp_socket>(create_socket(), addr);
 
-    c->io::channel::listen(&addr, sizeof(addr));
+    c->io::socket::listen(&addr, sizeof(addr));
 
-    return std::static_pointer_cast<io::channel>(c);
+    return c;
 }
 
-std::shared_ptr<io::channel> channel::accept()
+std::shared_ptr<io::socket> tcp_socket::accept()
 {
     int32_t fd{-1};
     sockaddr_in addr;
 
-    io::channel::accept(&fd, &addr, sizeof(addr));
+    socket::accept(&fd, &addr, sizeof(addr));
 
-    return std::make_shared<channel>(fd, addr);
+    return std::make_shared<tcp_socket>(fd, addr);
 }
 
-channel::channel(int32_t fd, const sockaddr_in& addr)
-  : io::channel(fd)
+tcp_socket::tcp_socket(int32_t fd, const sockaddr_in& addr)
+  : io::socket(fd)
 {
     to_uri(addr);
 
@@ -133,7 +133,7 @@ channel::channel(int32_t fd, const sockaddr_in& addr)
     }
 }
 
-void channel::to_uri(const sockaddr_in& addr)
+void tcp_socket::to_uri(const sockaddr_in& addr)
 {
     m_uri_view = format_to(m_uri, sizeof(m_uri),
                            "tcp://{}:{}",
@@ -141,14 +141,14 @@ void channel::to_uri(const sockaddr_in& addr)
                            ntohs(addr.sin_port));
 }
 
-std::shared_ptr<io::channel> connect(const std::string_view& host, const std::string_view& service, uint64_t timeout)
+std::shared_ptr<io::socket> connect(const std::string_view& host, const std::string_view& service, uint64_t timeout)
 {
-    return channel::connect(host, service, timeout);
+    return tcp_socket::connect(host, service, timeout);
 }
 
-std::shared_ptr<io::channel> listen(const std::string_view& host, const std::string_view& service)
+std::shared_ptr<io::socket> listen(const std::string_view& host, const std::string_view& service)
 {
-    return channel::listen(host, service);
+    return tcp_socket::listen(host, service);
 }
 
 }

@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <io/channel.h>
+#include <net/socket_channel.h>
 #include <net/server_exception.h>
 #include <net/service.json.h>
 
@@ -609,7 +609,7 @@ struct module : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::service::response_builder* service_response,
+                         tyrtech::net::socket_channel* channel,
                          typename Implementation::context* ctx)
     {
         switch (service_request.function())
@@ -619,14 +619,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename update::request_parser_t;
 
-                using response_builder_t =
-                        typename update::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->update(request, &response, ctx);
+                impl->update(request, channel, ctx);
 
                 break;
             }
@@ -635,14 +631,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename commit::request_parser_t;
 
-                using response_builder_t =
-                        typename commit::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->commit(request, &response, ctx);
+                impl->commit(request, channel, ctx);
 
                 break;
             }
@@ -651,14 +643,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename rollback::request_parser_t;
 
-                using response_builder_t =
-                        typename rollback::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->rollback(request, &response, ctx);
+                impl->rollback(request, channel, ctx);
 
                 break;
             }
@@ -667,14 +655,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename fetch::request_parser_t;
 
-                using response_builder_t =
-                        typename fetch::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->fetch(request, &response, ctx);
+                impl->fetch(request, channel, ctx);
 
                 break;
             }
@@ -683,14 +667,10 @@ struct module : private tyrtech::disallow_copy
                 using request_parser_t =
                         typename abort::request_parser_t;
 
-                using response_builder_t =
-                        typename abort::response_builder_t;
-
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
-                response_builder_t response(service_response->add_message());
 
-                impl->abort(request, &response, ctx);
+                impl->abort(request, channel, ctx);
 
                 break;
             }
@@ -701,7 +681,7 @@ struct module : private tyrtech::disallow_copy
         }
     }
 
-    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::channel>& remote)
+    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
     {
         return impl->create_context(remote);
     }

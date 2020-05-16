@@ -3,7 +3,7 @@
 #include <io/engine.h>
 #include <io/uri.h>
 #include <net/rpc_server.h>
-#include <net/rpc_client.h>
+#include <net/rpc_request.h>
 
 #include <tests/services.json.h>
 
@@ -23,31 +23,39 @@ struct impl : private disallow_copy
     {
     };
 
-    context create_context(const std::shared_ptr<io::channel>& remote)
+    context create_context(const std::shared_ptr<io::socket>& remote)
     {
         return context();
     }
 
     void func1(const func1::request_parser_t& request,
-               func1::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx)
     {
-    using namespace tests::module1;
-
-        response->add_param1(request.param1());
-        response->add_param2(request.param2());
-
         logger::debug("module1::func1 request: {} {}", request.param1(), request.param2());
+
+        net::rpc_response<tests::module1::func1> response(channel);
+        auto message = response.add_message();
+
+        message.add_param1(request.param1());
+        message.add_param2(request.param2());
+
+        response.send();
     }
 
     void func2(const func2::request_parser_t& request,
-               func2::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx)
     {
-        response->add_param1(request.param1());
-        response->add_param2(request.param2());
-
         logger::debug("module1::func2 request: {} {}", request.param1(), request.param2());
+
+        net::rpc_response<tests::module1::func2> response(channel);
+        auto message = response.add_message();
+
+        message.add_param1(request.param1());
+        message.add_param2(request.param2());
+
+        response.send();
     }
 };
 
@@ -65,31 +73,39 @@ struct impl : private disallow_copy
     {
     };
 
-    context create_context(const std::shared_ptr<io::channel>& remote)
+    context create_context(const std::shared_ptr<io::socket>& remote)
     {
         return context();
     }
 
     void func1(const func1::request_parser_t& request,
-               func1::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx)
     {
-        response->add_param1(request.param1());
-        response->add_param2(request.param2());
-
         logger::debug("module2::func1 request: {} {}", request.param1(), request.param2());
+
+        net::rpc_response<tests::module2::func1> response(channel);
+        auto message = response.add_message();
+
+        message.add_param1(request.param1());
+        message.add_param2(request.param2());
+
+        response.send();
     }
 
     void func2(const func2::request_parser_t& request,
-               func2::response_builder_t* response,
+               net::socket_channel* channel,
                context* ctx)
     {
-        response->add_param1(request.param1());
-        response->add_param2(request.param2());
-
-        throw test3_error("this is a test");
-
         logger::debug("module2::func2 request: {} {}", request.param1(), request.param2());
+
+        net::rpc_response<tests::module2::func2> response(channel);
+        auto message = response.add_message();
+
+        message.add_param1(request.param1());
+        message.add_param2(request.param2());
+
+        response.send();
     }
 };
 
@@ -99,7 +115,7 @@ using service1_t =
         tests::service1<module1::impl, module2::impl>;
 
 using server_t =
-        net::rpc_server<8192, service1_t>;
+        net::rpc_server<service1_t>;
 
 
 void client(server_t* s)
@@ -108,38 +124,32 @@ void client(server_t* s)
     {
         logger::debug("iteration: {}", i);
 
-        net::rpc_client<8192> c(io::uri::connect(s->uri(), 0));
+        net::socket_channel channel(io::uri::connect(s->uri(), 0), 0);
 
         {
-            auto func1 = c.remote_call<tests::module1::func1>();
+            net::rpc_request<tests::module1::func1> request(&channel);
+            auto message = request.add_message();
 
-            auto req = func1.request();
-            req.add_param1(1);
-            req.add_param2("test1");
-            req.finalize();
+            message.add_param1(1);
+            message.add_param2("test1");
 
-            func1.execute();
-            func1.wait();
+            request.execute();
+            auto response = request.wait();
 
-            auto res = func1.response();
-
-            logger::debug("module1::func1 response: {} {}", res.param1(), res.param2());
+            logger::debug("module1::func1 response: {} {}", response.param1(), response.param2());
         }
 
         {
-            auto func2 = c.remote_call<tests::module2::func2>();
+            net::rpc_request<tests::module2::func2> request(&channel);
+            auto message = request.add_message();
 
-            auto req = func2.request();
-            req.add_param1(2);
-            req.add_param2("test2");
-            req.finalize();
+            message.add_param1(2);
+            message.add_param2("test2");
 
-            func2.execute();
-            func2.wait();
+            request.execute();
+            auto response = request.wait();
 
-            auto res = func2.response();
-
-            logger::debug("module2::func2 response: {} {}", res.param1(), res.param2());
+            logger::debug("module2::func2 response: {} {}", response.param1(), response.param2());
         }
     }
 
@@ -153,7 +163,7 @@ int main()
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(64);
+    io::socket::initialize(64);
 
     logger::set(logger::level::debug);
 

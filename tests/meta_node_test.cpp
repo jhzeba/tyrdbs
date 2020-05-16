@@ -5,8 +5,7 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
-#include <net/rpc_client.h>
-
+#include <net/rpc_request.h>
 #include <tyrdbs/meta_node/service.json.h>
 #include <tyrdbs/meta_node/data.json.h>
 
@@ -106,7 +105,7 @@ void update_thread(const std::string_view& uri,
                    uint32_t target_rate,
                    FILE* stats_fd)
 {
-    net::rpc_client<8192> c(io::uri::connect(uri, 0));
+    net::socket_channel channel(io::uri::connect(uri, 0), 0);
 
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));
@@ -136,27 +135,27 @@ void update_thread(const std::string_view& uri,
 
         while (true)
         {
-            auto update_rpc = c.remote_call<tyrdbs::meta_node::log::update>();
-            auto req = update_rpc.request();
+            net::rpc_request<tyrdbs::meta_node::log::update> request(&channel);
+            auto message = request.add_message();
 
             if (handle != 0)
             {
-                req.add_handle(handle);
+                message.add_handle(handle);
             }
 
-            bool done = fill_entries(&r, req.add_data(), i);
+            bool done = fill_entries(&r, message.add_data(), i);
 
-            update_rpc.execute();
-            update_rpc.wait();
+            request.execute();
+            auto response = request.wait();
 
             if (handle == 0)
             {
-                assert(update_rpc.response().has_handle() == true);
-                handle = update_rpc.response().handle();
+                assert(response.has_handle() == true);
+                handle = response.handle();
             }
             else
             {
-                assert(update_rpc.response().has_handle() == false);
+                assert(response.has_handle() == false);
             }
 
             if (done == true)
@@ -167,13 +166,13 @@ void update_thread(const std::string_view& uri,
             assert(handle != 0);
         }
 
-        auto commit_rpc = c.remote_call<tyrdbs::meta_node::log::commit>();
-        auto req = commit_rpc.request();
+        net::rpc_request<tyrdbs::meta_node::log::commit> request(&channel);
+        auto message = request.add_message();
 
-        req.add_handle(handle);
+        message.add_handle(handle);
 
-        commit_rpc.execute();
-        commit_rpc.wait();
+        request.execute();
+        request.wait();
 
         auto t2 = clock::now();
 
@@ -273,7 +272,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     FILE* stats_fd = nullptr;
 

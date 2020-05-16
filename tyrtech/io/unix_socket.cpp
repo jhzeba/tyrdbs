@@ -1,6 +1,6 @@
 #include <common/branch_prediction.h>
 #include <common/system_error.h>
-#include <io/unix_channel.h>
+#include <io/unix_socket.h>
 
 #include <cassert>
 #include <sys/socket.h>
@@ -11,17 +11,17 @@
 namespace tyrtech::io::unix {
 
 
-class channel : public io::channel
+class unix_socket : public io::socket
 {
 public:
-    static std::shared_ptr<io::channel> connect(const std::string_view& path, uint64_t timeout);
-    static std::shared_ptr<io::channel> listen(const std::string_view& path);
+    static std::shared_ptr<io::socket> connect(const std::string_view& path, uint64_t timeout);
+    static std::shared_ptr<io::socket> listen(const std::string_view& path);
 
 public:
-    std::shared_ptr<io::channel> accept() override;
+    std::shared_ptr<io::socket> accept() override;
 
 public:
-    channel(int32_t fd, const sockaddr_un& addr);
+    unix_socket(int32_t fd, const sockaddr_un& addr);
 
 private:
     void to_uri(const sockaddr_un& addr);
@@ -57,45 +57,45 @@ sockaddr_un resolve(const std::string_view& path)
     return addr;
 }
 
-std::shared_ptr<io::channel> channel::connect(const std::string_view& path, uint64_t timeout)
+std::shared_ptr<io::socket> unix_socket::connect(const std::string_view& path, uint64_t timeout)
 {
     auto addr = resolve(path);
 
-    auto c = std::make_shared<channel>(create_socket(), addr);
+    auto c = std::make_shared<unix_socket>(create_socket(), addr);
 
-    c->io::channel::connect(&addr, sizeof(addr), timeout);
+    c->io::socket::connect(&addr, sizeof(addr), timeout);
 
-    return std::static_pointer_cast<io::channel>(c);
+    return c;
 }
 
-std::shared_ptr<io::channel> channel::listen(const std::string_view& path)
+std::shared_ptr<io::socket> unix_socket::listen(const std::string_view& path)
 {
     auto addr = resolve(path);
 
-    auto c = std::make_shared<channel>(create_socket(), addr);
+    auto c = std::make_shared<unix_socket>(create_socket(), addr);
 
-    c->io::channel::listen(&addr, sizeof(addr));
+    c->io::socket::listen(&addr, sizeof(addr));
 
-    return std::static_pointer_cast<io::channel>(c);
+    return c;
 }
 
-std::shared_ptr<io::channel> channel::accept()
+std::shared_ptr<io::socket> unix_socket::accept()
 {
     int32_t fd{-1};
     sockaddr_un addr;
 
-    io::channel::accept(&fd, &addr, sizeof(addr));
+    io::socket::accept(&fd, &addr, sizeof(addr));
 
-    return std::make_shared<channel>(fd, addr);
+    return std::make_shared<unix_socket>(fd, addr);
 }
 
-channel::channel(int32_t fd, const sockaddr_un& addr)
-  : io::channel(fd)
+unix_socket::unix_socket(int32_t fd, const sockaddr_un& addr)
+  : io::socket(fd)
 {
     to_uri(addr);
 }
 
-void channel::to_uri(const sockaddr_un& addr)
+void unix_socket::to_uri(const sockaddr_un& addr)
 {
     bool abstract = true;
 
@@ -115,14 +115,14 @@ void channel::to_uri(const sockaddr_un& addr)
                            path);
 }
 
-std::shared_ptr<io::channel> connect(const std::string_view& path, uint64_t timeout)
+std::shared_ptr<io::socket> connect(const std::string_view& path, uint64_t timeout)
 {
-    return channel::connect(path, timeout);
+    return unix_socket::connect(path, timeout);
 }
 
-std::shared_ptr<io::channel> listen(const std::string_view& path)
+std::shared_ptr<io::socket> listen(const std::string_view& path)
 {
-    return channel::listen(path);
+    return unix_socket::listen(path);
 }
 
 }

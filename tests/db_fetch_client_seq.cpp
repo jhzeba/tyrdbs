@@ -3,7 +3,7 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
-#include <net/rpc_client.h>
+#include <net/rpc_request.h>
 
 #include <tests/db_server_service.json.h>
 #include <tests/data.json.h>
@@ -15,7 +15,7 @@
 using namespace tyrtech;
 
 
-uint64_t calc_avg(net::rpc_client<8192>* c, uint64_t min, uint64_t max, uint32_t ushard)
+uint64_t calc_avg(net::socket_channel* channel, uint64_t min, uint64_t max, uint32_t ushard)
 {
     uint64_t sum = 0;
     uint32_t count = 0;
@@ -27,9 +27,8 @@ uint64_t calc_avg(net::rpc_client<8192>* c, uint64_t min, uint64_t max, uint32_t
 
     while (true)
     {
-        auto fetch_data = c->remote_call<tests::collections::fetch_data>();
-
-        auto req = fetch_data.request();
+        net::rpc_request<tests::collections::fetch_data> request(channel);
+        auto message = request.add_message();
 
         if (handle == 0)
         {
@@ -39,23 +38,21 @@ uint64_t calc_avg(net::rpc_client<8192>* c, uint64_t min, uint64_t max, uint32_t
             uint64_t max_key = __builtin_bswap64(max);
             std::string_view max_key_str(reinterpret_cast<const char*>(&max_key), sizeof(max_key));
 
-            req.add_min_key(min_key_str);
-            req.add_max_key(max_key_str);
-            req.add_ushard(ushard);
+            message.add_min_key(min_key_str);
+            message.add_max_key(max_key_str);
+            message.add_ushard(ushard);
         }
         else
         {
-            req.add_handle(handle);
+            message.add_handle(handle);
         }
 
-        fetch_data.execute();
-        fetch_data.wait();
+        request.execute();
+        auto response = request.wait();
 
-        auto res = fetch_data.response();
+        assert(response.has_data() == true);
 
-        assert(res.has_data() == true);
-
-        tests::data_parser data(res.get_parser(), res.data());
+        tests::data_parser data(response.get_parser(), response.data());
 
         auto&& dbs = data.collections();
 
@@ -91,7 +88,7 @@ uint64_t calc_avg(net::rpc_client<8192>* c, uint64_t min, uint64_t max, uint32_t
             }
         }
 
-        if (res.has_handle() == false)
+        if (response.has_handle() == false)
         {
             assert((data.flags() & 0x01) == 0x01);
 
@@ -100,10 +97,10 @@ uint64_t calc_avg(net::rpc_client<8192>* c, uint64_t min, uint64_t max, uint32_t
 
         if (handle == 0)
         {
-            handle = res.handle();
+            handle = response.handle();
         }
 
-        assert(handle == res.handle());
+        assert(handle == response.handle());
     }
 
     return count;
@@ -116,7 +113,7 @@ void fetch_thread(const std::string_view& uri,
                   uint32_t ushard_bits,
                   FILE* stats_fd)
 {
-    net::rpc_client<8192> c(io::uri::connect(uri, 0));
+    net::socket_channel channel(io::uri::connect(uri, 0), 0);
 
     auto s = std::make_unique<tests::stats>();
 
@@ -144,7 +141,7 @@ void fetch_thread(const std::string_view& uri,
 
                 uint32_t ushard = i & ((1UL << ushard_bits) - 1);
 
-                keys += calc_avg(&c, min, max, ushard);
+                keys += calc_avg(&channel, min, max, ushard);
             }
         }
 
@@ -244,7 +241,7 @@ int main(int argc, const char* argv[])
 
     gt::initialize();
     io::initialize(4096);
-    io::channel::initialize(cmd.get<uint32_t>("network-queue-depth"));
+    io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     FILE* stats_fd = nullptr;
 

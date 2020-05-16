@@ -86,8 +86,8 @@ private:
     std::shared_ptr<node> load(uint64_t location) const;
 
 private:
-    friend class slice_writer;
     friend class slice_iterator;
+    friend class slice_writer;
 };
 
 
