@@ -5,6 +5,7 @@
 #include <gt/async.h>
 #include <gt/condition.h>
 #include <io/engine.h>
+#include <io/file_channel.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/overwrite_iterator.h>
@@ -73,7 +74,10 @@ uint32_t tier_of(const tyrdbs::slice_ptr& slice)
 void insert(const data_set_t& data, thread_data* td)
 {
     char buff[37];
-    tyrdbs::slice_writer w(nullptr);//"{}.dat", uuid().str(buff, sizeof(buff)));
+    auto f = io::file::create("{}.dat", uuid().str(buff, sizeof(buff)));
+    auto ch = io::file_channel(&f);
+
+    tyrdbs::slice_writer w(&ch);
 
     auto t1 = clock::now();
 
@@ -85,7 +89,7 @@ void insert(const data_set_t& data, thread_data* td)
 
     w.flush();
 
-    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), "");//"{}", w.path());
+    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), f.path());
     slice->set_tid(tid++);
 
     auto tier = tier_of(slice);
@@ -250,7 +254,10 @@ void merge(thread_data* td, uint8_t tier)
     }
 
     char buff[37];
-    tyrdbs::slice_writer w(nullptr);//"{}.dat", uuid().str(buff, sizeof(buff)));
+    auto f = io::file::create("{}.dat", uuid().str(buff, sizeof(buff)));
+    auto ch = io::file_channel(&f);
+
+    tyrdbs::slice_writer w(&ch);
 
     auto t1 = clock::now();
 
@@ -259,7 +266,7 @@ void merge(thread_data* td, uint8_t tier)
     w.add(&db_it, compact);
     w.flush();
 
-    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), "");//w.path());
+    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), f.path());
 
     if (compact == true)
     {
