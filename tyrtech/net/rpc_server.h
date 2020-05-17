@@ -122,6 +122,8 @@ private:
                 }
                 catch (server_error_exception& e)
                 {
+                    logger::error("{}: {}", channel.uri(), e.what());
+
                     rpc_response<std::void_t<>> response(&channel);
 
                     auto error = response.add_error();

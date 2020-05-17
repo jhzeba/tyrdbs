@@ -9,35 +9,23 @@
 namespace tyrtech::tyrdbs::meta_node::log {
 
 
-namespace messages::update {
+namespace messages::update_slices {
 
 
-struct request_builder final : public tyrtech::message::struct_builder<2, 0>
+struct request_builder final : public tyrtech::message::struct_builder<0, 1>
 {
     request_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
-    void add_handle(const uint64_t& value)
+    void set_merge_request(uint8_t value)
     {
-        set_offset<0>();
-        struct_builder<2, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
-    }
-
-    decltype(auto) add_data()
-    {
-        set_offset<1>();
-        return m_builder;
+        *reinterpret_cast<uint8_t*>(m_static + 0) = value;
     }
 };
 
-struct request_parser final : public tyrtech::message::struct_parser<2, 0>
+struct request_parser final : public tyrtech::message::struct_parser<0, 1>
 {
     request_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -46,47 +34,26 @@ struct request_parser final : public tyrtech::message::struct_parser<2, 0>
 
     request_parser() = default;
 
-    bool has_handle() const
+    decltype(auto) merge_request() const
     {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-
-    bool has_data() const
-    {
-        return has_offset<1>();
-    }
-
-    decltype(auto) data() const
-    {
-        return offset<1>();
+        return *reinterpret_cast<const uint8_t*>(m_static + 0);
     }
 };
 
-struct response_builder final : public tyrtech::message::struct_builder<1, 0>
+struct response_builder final : public tyrtech::message::struct_builder<0, 8>
 {
     response_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
-    void add_handle(const uint64_t& value)
+    void set_tid(uint64_t value)
     {
-        set_offset<0>();
-        struct_builder<1, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
+        *reinterpret_cast<uint64_t*>(m_static + 0) = value;
     }
 };
 
-struct response_parser final : public tyrtech::message::struct_parser<1, 0>
+struct response_parser final : public tyrtech::message::struct_parser<0, 8>
 {
     response_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -95,42 +62,31 @@ struct response_parser final : public tyrtech::message::struct_parser<1, 0>
 
     response_parser() = default;
 
-    bool has_handle() const
+    decltype(auto) tid() const
     {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
+        return *reinterpret_cast<const uint64_t*>(m_static + 0);
     }
 };
 
 }
 
-namespace messages::commit {
+namespace messages::fetch_slices {
 
 
-struct request_builder final : public tyrtech::message::struct_builder<1, 0>
+struct request_builder final : public tyrtech::message::struct_builder<0, 2>
 {
     request_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
-    void add_handle(const uint64_t& value)
+    void set_ushard(uint16_t value)
     {
-        set_offset<0>();
-        struct_builder<1, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
+        *reinterpret_cast<uint16_t*>(m_static + 0) = value;
     }
 };
 
-struct request_parser final : public tyrtech::message::struct_parser<1, 0>
+struct request_parser final : public tyrtech::message::struct_parser<0, 2>
 {
     request_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -138,301 +94,10 @@ struct request_parser final : public tyrtech::message::struct_parser<1, 0>
     }
 
     request_parser() = default;
-
-    bool has_handle() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-};
-
-struct response_builder final : public tyrtech::message::struct_builder<0, 0>
-{
-    response_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-};
-
-struct response_parser final : public tyrtech::message::struct_parser<0, 0>
-{
-    response_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    response_parser() = default;
-};
-
-}
-
-namespace messages::rollback {
-
-
-struct request_builder final : public tyrtech::message::struct_builder<1, 0>
-{
-    request_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    void add_handle(const uint64_t& value)
-    {
-        set_offset<0>();
-        struct_builder<1, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
-    }
-};
-
-struct request_parser final : public tyrtech::message::struct_parser<1, 0>
-{
-    request_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    request_parser() = default;
-
-    bool has_handle() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-};
-
-struct response_builder final : public tyrtech::message::struct_builder<0, 0>
-{
-    response_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-};
-
-struct response_parser final : public tyrtech::message::struct_parser<0, 0>
-{
-    response_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    response_parser() = default;
-};
-
-}
-
-namespace messages::fetch {
-
-
-struct request_builder final : public tyrtech::message::struct_builder<4, 0>
-{
-    request_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    void add_handle(const uint64_t& value)
-    {
-        set_offset<0>();
-        struct_builder<4, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
-    }
-
-    void add_ushard(const uint32_t& value)
-    {
-        set_offset<1>();
-        struct_builder<4, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t ushard_bytes_required()
-    {
-        return tyrtech::message::element<uint32_t>::size;
-    }
-
-    void add_min_key(const std::string_view& value)
-    {
-        set_offset<2>();
-        struct_builder<4, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t min_key_bytes_required()
-    {
-        return tyrtech::message::element<std::string_view>::size;
-    }
-
-    void add_max_key(const std::string_view& value)
-    {
-        set_offset<3>();
-        struct_builder<4, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t max_key_bytes_required()
-    {
-        return tyrtech::message::element<std::string_view>::size;
-    }
-};
-
-struct request_parser final : public tyrtech::message::struct_parser<4, 0>
-{
-    request_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    request_parser() = default;
-
-    bool has_handle() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-
-    bool has_ushard() const
-    {
-        return has_offset<1>();
-    }
 
     decltype(auto) ushard() const
     {
-        return tyrtech::message::element<uint32_t>().parse(m_parser, offset<1>());
-    }
-
-    bool has_min_key() const
-    {
-        return has_offset<2>();
-    }
-
-    decltype(auto) min_key() const
-    {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<2>());
-    }
-
-    bool has_max_key() const
-    {
-        return has_offset<3>();
-    }
-
-    decltype(auto) max_key() const
-    {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<3>());
-    }
-};
-
-struct response_builder final : public tyrtech::message::struct_builder<2, 0>
-{
-    response_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    void add_handle(const uint64_t& value)
-    {
-        set_offset<0>();
-        struct_builder<2, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
-    }
-
-    decltype(auto) add_data()
-    {
-        set_offset<1>();
-        return m_builder;
-    }
-};
-
-struct response_parser final : public tyrtech::message::struct_parser<2, 0>
-{
-    response_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    response_parser() = default;
-
-    bool has_handle() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-
-    bool has_data() const
-    {
-        return has_offset<1>();
-    }
-
-    decltype(auto) data() const
-    {
-        return offset<1>();
-    }
-};
-
-}
-
-namespace messages::abort {
-
-
-struct request_builder final : public tyrtech::message::struct_builder<1, 0>
-{
-    request_builder(tyrtech::message::builder* builder)
-      : struct_builder(builder)
-    {
-    }
-
-    void add_handle(const uint64_t& value)
-    {
-        set_offset<0>();
-        struct_builder<1, 0>::add_value(value);
-    }
-
-    static constexpr uint16_t handle_bytes_required()
-    {
-        return tyrtech::message::element<uint64_t>::size;
-    }
-};
-
-struct request_parser final : public tyrtech::message::struct_parser<1, 0>
-{
-    request_parser(const tyrtech::message::parser* parser, uint16_t offset)
-      : struct_parser(parser, offset)
-    {
-    }
-
-    request_parser() = default;
-
-    bool has_handle() const
-    {
-        return has_offset<0>();
-    }
-
-    decltype(auto) handle() const
-    {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
+        return *reinterpret_cast<const uint16_t*>(m_static + 0);
     }
 };
 
@@ -456,7 +121,49 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
 
 }
 
-DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, invalid_handle_exception);
+namespace messages::get_merge_candidates {
+
+
+struct request_builder final : public tyrtech::message::struct_builder<0, 0>
+{
+    request_builder(tyrtech::message::builder* builder)
+      : struct_builder(builder)
+    {
+    }
+};
+
+struct request_parser final : public tyrtech::message::struct_parser<0, 0>
+{
+    request_parser(const tyrtech::message::parser* parser, uint16_t offset)
+      : struct_parser(parser, offset)
+    {
+    }
+
+    request_parser() = default;
+};
+
+struct response_builder final : public tyrtech::message::struct_builder<0, 0>
+{
+    response_builder(tyrtech::message::builder* builder)
+      : struct_builder(builder)
+    {
+    }
+};
+
+struct response_parser final : public tyrtech::message::struct_parser<0, 0>
+{
+    response_parser(const tyrtech::message::parser* parser, uint16_t offset)
+      : struct_parser(parser, offset)
+    {
+    }
+
+    response_parser() = default;
+};
+
+}
+
+DEFINE_SERVER_EXCEPTION(1, tyrtech::net::server_error_exception, block_too_big_exception);
+DEFINE_SERVER_EXCEPTION(2, tyrtech::net::server_error_exception, invalid_id_exception);
 
 constexpr void throw_module_exception(const tyrtech::net::service::error_parser& error)
 {
@@ -472,7 +179,11 @@ constexpr void throw_module_exception(const tyrtech::net::service::error_parser&
         }
         case 1:
         {
-            throw invalid_handle_exception("{}", error.message());
+            throw block_too_big_exception("{}", error.message());
+        }
+        case 2:
+        {
+            throw invalid_id_exception("{}", error.message());
         }
         default:
         {
@@ -483,22 +194,22 @@ constexpr void throw_module_exception(const tyrtech::net::service::error_parser&
 
 static constexpr uint16_t id{1};
 
-struct update
+struct update_slices
 {
     static constexpr uint16_t id{1};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::update::request_builder;
+            messages::update_slices::request_builder;
 
     using request_parser_t =
-            messages::update::request_parser;
+            messages::update_slices::request_parser;
 
     using response_builder_t =
-            messages::update::response_builder;
+            messages::update_slices::response_builder;
 
     using response_parser_t =
-            messages::update::response_parser;
+            messages::update_slices::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -506,22 +217,22 @@ struct update
     }
 };
 
-struct commit
+struct fetch_slices
 {
     static constexpr uint16_t id{2};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::commit::request_builder;
+            messages::fetch_slices::request_builder;
 
     using request_parser_t =
-            messages::commit::request_parser;
+            messages::fetch_slices::request_parser;
 
     using response_builder_t =
-            messages::commit::response_builder;
+            messages::fetch_slices::response_builder;
 
     using response_parser_t =
-            messages::commit::response_parser;
+            messages::fetch_slices::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -529,68 +240,22 @@ struct commit
     }
 };
 
-struct rollback
+struct get_merge_candidates
 {
     static constexpr uint16_t id{3};
     static constexpr uint16_t module_id{1};
 
     using request_builder_t =
-            messages::rollback::request_builder;
+            messages::get_merge_candidates::request_builder;
 
     using request_parser_t =
-            messages::rollback::request_parser;
+            messages::get_merge_candidates::request_parser;
 
     using response_builder_t =
-            messages::rollback::response_builder;
+            messages::get_merge_candidates::response_builder;
 
     using response_parser_t =
-            messages::rollback::response_parser;
-
-    static void throw_exception(const tyrtech::net::service::error_parser& error)
-    {
-        throw_module_exception(error);
-    }
-};
-
-struct fetch
-{
-    static constexpr uint16_t id{4};
-    static constexpr uint16_t module_id{1};
-
-    using request_builder_t =
-            messages::fetch::request_builder;
-
-    using request_parser_t =
-            messages::fetch::request_parser;
-
-    using response_builder_t =
-            messages::fetch::response_builder;
-
-    using response_parser_t =
-            messages::fetch::response_parser;
-
-    static void throw_exception(const tyrtech::net::service::error_parser& error)
-    {
-        throw_module_exception(error);
-    }
-};
-
-struct abort
-{
-    static constexpr uint16_t id{5};
-    static constexpr uint16_t module_id{1};
-
-    using request_builder_t =
-            messages::abort::request_builder;
-
-    using request_parser_t =
-            messages::abort::request_parser;
-
-    using response_builder_t =
-            messages::abort::response_builder;
-
-    using response_parser_t =
-            messages::abort::response_parser;
+            messages::get_merge_candidates::response_parser;
 
     static void throw_exception(const tyrtech::net::service::error_parser& error)
     {
@@ -614,63 +279,39 @@ struct module : private tyrtech::disallow_copy
     {
         switch (service_request.function())
         {
-            case update::id:
+            case update_slices::id:
             {
                 using request_parser_t =
-                        typename update::request_parser_t;
+                        typename update_slices::request_parser_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->update(request, channel, ctx);
+                impl->update_slices(request, channel, ctx);
 
                 break;
             }
-            case commit::id:
+            case fetch_slices::id:
             {
                 using request_parser_t =
-                        typename commit::request_parser_t;
+                        typename fetch_slices::request_parser_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->commit(request, channel, ctx);
+                impl->fetch_slices(request, channel, ctx);
 
                 break;
             }
-            case rollback::id:
+            case get_merge_candidates::id:
             {
                 using request_parser_t =
-                        typename rollback::request_parser_t;
+                        typename get_merge_candidates::request_parser_t;
 
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->rollback(request, channel, ctx);
-
-                break;
-            }
-            case fetch::id:
-            {
-                using request_parser_t =
-                        typename fetch::request_parser_t;
-
-                request_parser_t request(service_request.get_parser(),
-                                         service_request.message());
-
-                impl->fetch(request, channel, ctx);
-
-                break;
-            }
-            case abort::id:
-            {
-                using request_parser_t =
-                        typename abort::request_parser_t;
-
-                request_parser_t request(service_request.get_parser(),
-                                         service_request.message());
-
-                impl->abort(request, channel, ctx);
+                impl->get_merge_candidates(request, channel, ctx);
 
                 break;
             }

@@ -47,13 +47,6 @@ int main(int argc, const char* argv[])
                   "0",
                   {"cpu index to run the program on (default is 0)"});
 
-    cmd.add_param("merge-threads",
-                  nullptr,
-                  "merge-threads",
-                  "num",
-                  "2",
-                  {"number of merge threads to use (default is 2)"});
-
     cmd.add_param("cache-bits",
                   nullptr,
                   "cache-bits",
@@ -101,9 +94,8 @@ int main(int argc, const char* argv[])
 
         gt::create_thread(tyrdbs::meta_node::service_thread,
                           cmd.get<std::string_view>("uri"),
-                          cmd.get<uint32_t>("merge-threads"),
                           cmd.get<uint32_t>("max-slices"),
-                          cmd.get<uint32_t>("ushards"));
+                          cmd.get<uint16_t>("ushards"));
 
         gt::run();
     }

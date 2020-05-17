@@ -10,18 +10,19 @@
 namespace tyrtech {
 
 
+using uuid_t =
+        uint8_t[16];
+
 class uuid : private disallow_copy
 {
 public:
-    std::string_view str(char* buffer, uint32_t size);
+    std::string_view str(char* buffer, uint32_t size) const;
+    std::string_view bytes() const;
 
 public:
     uuid();
 
 private:
-    using uuid_t =
-            uint8_t[16];
-
     uuid_t m_uuid;
 };
 

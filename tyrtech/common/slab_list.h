@@ -19,7 +19,7 @@ public:
         uint32_t prev;
         uint32_t next;
         T item;
-    };
+    } __attribute__ ((packed));
 
 public:
     using entry_pool_t =
@@ -238,6 +238,18 @@ public:
         other.m_size = 0;
 
         return *this;
+    }
+
+    ~slab_list()
+    {
+        auto e = begin();
+
+        while (e != invalid_handle)
+        {
+            auto next_e = next(e);
+            free_entry(e);
+            e = next_e;
+        }
     }
 
 private:

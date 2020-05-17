@@ -19,13 +19,12 @@ using server_t =
 
 
 void service_thread(const std::string_view& uri,
-                    uint32_t merge_threads,
                     uint32_t max_slices,
-                    uint32_t ushards)
+                    uint16_t ushards)
 {
     auto ch = io::uri::listen(uri);
 
-    log::impl impl("data", merge_threads, max_slices, ushards);
+    log::impl impl("data", max_slices, ushards);
     service_t service(&impl);
 
     server_t server(ch, &service);

@@ -1,0 +1,17 @@
+{
+    "tyrtech::tyrdbs::meta_node":
+    {
+        "slice":
+        {
+            "flags": "uint16#",
+            "ushard": "uint16#",
+            "tid": "uint64",
+            "id": "string"
+        },
+        "block":
+        {
+            "flags": "uint8#",
+            "slices": ["slice"]
+        }
+    }
+}

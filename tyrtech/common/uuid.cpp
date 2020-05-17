@@ -8,7 +8,7 @@
 namespace tyrtech {
 
 
-std::string_view uuid::str(char* buffer, uint32_t size)
+std::string_view uuid::str(char* buffer, uint32_t size) const
 {
     assert(likely(size >= 37));
 
@@ -16,6 +16,11 @@ std::string_view uuid::str(char* buffer, uint32_t size)
     buffer[36] = 0;
 
     return std::string_view(buffer, 36);
+}
+
+std::string_view uuid::bytes() const
+{
+    return std::string_view(reinterpret_cast<const char*>(m_uuid), 16);
 }
 
 uuid::uuid()

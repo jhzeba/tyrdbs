@@ -4,64 +4,38 @@
         "log":
         {
             "id": 1,
-            "exceptions": ["invalid_handle_exception"],
-            "update":
+            "exceptions": [
+                "block_too_big_exception",
+                "invalid_id_exception"
+            ],
+            "update_slices":
             {
                 "id": 1,
                 "request":
                 {
-                    "handle": "uint64",
-                    "data": "template"
+                    "merge_request": "uint8#"
                 },
                 "response":
                 {
-                    "handle": "uint64"
+                    "tid": "uint64#"
                 }
             },
-            "commit":
+            "fetch_slices":
             {
                 "id": 2,
                 "request":
                 {
-                    "handle": "uint64"
+                    "ushard": "uint16#"
                 },
                 "response":
                 {
                 }
             },
-            "rollback":
+            "get_merge_candidates":
             {
                 "id": 3,
                 "request":
                 {
-                    "handle": "uint64"
-                },
-                "response":
-                {
-                }
-            },
-            "fetch":
-            {
-                "id": 4,
-                "request":
-                {
-                    "handle": "uint64",
-                    "ushard": "uint32",
-                    "min_key": "string",
-                    "max_key": "string"
-                },
-                "response":
-                {
-                    "handle": "uint64",
-                    "data": "template"
-                }
-            },
-            "abort":
-            {
-                "id": 5,
-                "request":
-                {
-                    "handle": "uint64"
                 },
                 "response":
                 {
