@@ -64,108 +64,30 @@ public:
 
     uint32_t insert_before(uint32_t p)
     {
-        uint32_t e = allocate_entry();
-        auto& _e = get_entry(e);
-
-        if (m_front == invalid_handle)
-        {
-            assert(likely(m_back == invalid_handle));
-            assert(likely(p == invalid_handle));
-
-            _e.prev = invalid_handle;
-            _e.next = invalid_handle;
-
-            m_front = e;
-            m_back = e;
-        }
-        else
-        {
-            assert(likely(m_back != invalid_handle));
-            assert(likely(p != invalid_handle));
-
-            auto& _p = get_entry(p);
-
-            _e.prev = _p.prev;
-            _p.prev = e;
-
-            _e.next = p;
-
-            if (p == m_front)
-            {
-                m_front = e;
-            }
-        }
-
-        m_size++;
-
-        return e;
+        insert_before(p, allocate_entry());
     }
 
     uint32_t insert_after(uint32_t p)
     {
-        uint32_t e = allocate_entry();
-        m_size++;
+        return insert_after(p, allocate_entry());
+    }
 
-        auto& _e = get_entry(e);
+    void move_front(slab_list* source, uint32_t e)
+    {
+        source->remove(e);
+        insert_before(m_front, e);
+    }
 
-        if (m_front == invalid_handle)
-        {
-            assert(likely(m_back == invalid_handle));
-            assert(likely(p == invalid_handle));
-
-            _e.prev = invalid_handle;
-            _e.next = invalid_handle;
-
-            m_front = e;
-            m_back = e;
-        }
-        else
-        {
-            assert(likely(m_back != invalid_handle));
-            assert(likely(p != invalid_handle));
-
-            auto& _p = get_entry(p);
-
-            _e.next = _p.next;
-            _p.next = e;
-
-            _e.prev = p;
-
-            if (p == m_back)
-            {
-                m_back = e;
-            }
-        }
-
-        return e;
+    void move_back(slab_list* source, uint32_t e)
+    {
+        source->remove(e);
+        insert_after(m_back, e);
     }
 
     void erase(uint32_t e)
     {
-        auto& _e = get_entry(e);
-
-        if (_e.prev != invalid_handle)
-        {
-            get_entry(_e.prev).next = _e.next;
-        }
-
-        if (_e.next != invalid_handle)
-        {
-            get_entry(_e.next).prev = _e.prev;
-        }
-
-        if (m_front == e)
-        {
-            m_front = _e.next;
-        }
-
-        if (m_back == e)
-        {
-            m_back = _e.prev;
-        }
-
+        remove(e);
         free_entry(e);
-        m_size--;
     }
 
     uint32_t begin()
@@ -281,6 +203,109 @@ private:
     {
         assert(likely(handle != invalid_handle));
         return m_entry_pool->get(handle);
+    }
+
+    uint32_t insert_before(uint32_t p, uint32_t e)
+    {
+        auto& _e = get_entry(e);
+
+        if (m_front == invalid_handle)
+        {
+            assert(likely(m_back == invalid_handle));
+            assert(likely(p == invalid_handle));
+
+            _e.prev = invalid_handle;
+            _e.next = invalid_handle;
+
+            m_front = e;
+            m_back = e;
+        }
+        else
+        {
+            assert(likely(m_back != invalid_handle));
+            assert(likely(p != invalid_handle));
+
+            auto& _p = get_entry(p);
+
+            _e.prev = _p.prev;
+            _p.prev = e;
+
+            _e.next = p;
+
+            if (p == m_front)
+            {
+                m_front = e;
+            }
+        }
+
+        m_size++;
+
+        return e;
+    }
+
+    uint32_t insert_after(uint32_t p, uint32_t e)
+    {
+        m_size++;
+
+        auto& _e = get_entry(e);
+
+        if (m_front == invalid_handle)
+        {
+            assert(likely(m_back == invalid_handle));
+            assert(likely(p == invalid_handle));
+
+            _e.prev = invalid_handle;
+            _e.next = invalid_handle;
+
+            m_front = e;
+            m_back = e;
+        }
+        else
+        {
+            assert(likely(m_back != invalid_handle));
+            assert(likely(p != invalid_handle));
+
+            auto& _p = get_entry(p);
+
+            _e.next = _p.next;
+            _p.next = e;
+
+            _e.prev = p;
+
+            if (p == m_back)
+            {
+                m_back = e;
+            }
+        }
+
+        return e;
+    }
+
+    void remove(uint32_t e)
+    {
+        auto& _e = get_entry(e);
+
+        if (_e.prev != invalid_handle)
+        {
+            get_entry(_e.prev).next = _e.next;
+        }
+
+        if (_e.next != invalid_handle)
+        {
+            get_entry(_e.next).prev = _e.prev;
+        }
+
+        if (m_front == e)
+        {
+            m_front = _e.next;
+        }
+
+        if (m_back == e)
+        {
+            m_back = _e.prev;
+        }
+
+        m_size--;
     }
 };
 

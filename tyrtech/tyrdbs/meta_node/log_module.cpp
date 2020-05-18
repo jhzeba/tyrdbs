@@ -37,7 +37,7 @@ void impl::update_slices(const update_slices::request_parser_t& request,
                          net::socket_channel* channel,
                          context* ctx)
 {
-    auto tid = update_slices(channel);
+    auto tid = update_slices(channel, request.merge_request());
 
     net::rpc_response<log::update_slices> response(channel);
     auto message = response.add_message();
@@ -67,7 +67,7 @@ void impl::get_merge_candidates(const get_merge_candidates::request_parser_t& re
     response.send();
 }
 
-uint64_t impl::update_slices(net::socket_channel* channel)
+uint64_t impl::update_slices(net::socket_channel* channel, bool merge_request)
 {
     slices_t transaction(&m_slices);
 
@@ -103,43 +103,22 @@ uint64_t impl::update_slices(net::socket_channel* channel)
         print_done = true;
     }
 
-    auto e = transaction.begin();
-
-    while (e != slices_t::invalid_handle)
+    if (merge_request == false)
     {
-        auto next_e = transaction.next(e);
-        auto entry = transaction.item(e);
-
-        auto& ushard = m_ushards[entry->ushard];
-
-        if ((entry->ref & 0x8000) != 0)
+        while (m_slice_count > m_max_slices)
         {
-            // auto ushard_e = ushard.begin();
-
-            // while (ushard_e != slices_t::invalid_handle)
-            // {
-            //     auto next_ushard_e = ushard.next(ushard_e);
-            //     auto ushard_entry = ushard.item(ushard_e);
-
-            //     if (std::memcmp(entry->id, ushard_entry->id, sizeof(uuid_t)) == 0)
-            //     {
-            //         break;
-            //     }
-
-            //     ushard_e = next_ushard_e;
-            // }
-
-            // m_removed_slices.move_back(ushard_e);
+            m_slice_count_cond.wait();
         }
-        else
-        {
-            // ushard.move_back(e);
-        }
-
-        e = next_e;
     }
 
-    return m_next_tid++;
+    auto tid = commit(&transaction);
+
+    if (merge_request == true)
+    {
+        m_slice_count_cond.signal_all();
+    }
+
+    return tid;
 }
 
 bool impl::process_block(const block_parser& block, slices_t* transaction)
@@ -156,8 +135,6 @@ bool impl::process_block(const block_parser& block, slices_t* transaction)
     while (slices.next() == true)
     {
         auto slice = slices.value();
-        auto flags = slice.flags();
-        auto ushard = slice.ushard();
 
         if (slice.has_id() == false)
         {
@@ -173,18 +150,85 @@ bool impl::process_block(const block_parser& block, slices_t* transaction)
 
         auto entry = transaction->item(transaction->push_back());
 
-        entry->ushard = ushard % m_ushards.size();
+        entry->ushard = slice.ushard() % m_ushards.size();
         entry->ref = 0;
         entry->tid = 0;
+        entry->size = slice.size();
         std::memcpy(entry->id, id.data(), sizeof(uuid_t));
 
-        if ((flags & 0x01) == 0) // TODO: add slice flags
+        if ((slice.flags() & 0x01) == 0) // TODO: add slice flags
         {
             entry->ref |= 0x8000;
         }
     }
 
     return is_last_block;
+}
+
+uint64_t impl::commit(slices_t* transaction)
+{
+    auto tid = m_next_tid++;
+    auto e = transaction->begin();
+
+    while (e != slices_t::invalid_handle)
+    {
+        auto next_e = transaction->next(e);
+        auto entry = transaction->item(e);
+
+        entry->tid = tid;
+
+        auto& ushard = m_ushards[entry->ushard];
+
+        if ((entry->ref & 0x8000) != 0)
+        {
+            auto ushard_e = ushard.begin();
+
+            while (ushard_e != slices_t::invalid_handle)
+            {
+                auto next_ushard_e = ushard.next(ushard_e);
+                auto ushard_entry = ushard.item(ushard_e);
+
+                if (std::memcmp(entry->id, ushard_entry->id, sizeof(uuid_t)) == 0)
+                {
+                    break;
+                }
+
+                ushard_e = next_ushard_e;
+            }
+
+            m_removed_slices.move_back(&ushard, ushard_e);
+
+            m_slice_count--;
+        }
+        else
+        {
+            ushard.move_back(transaction, e);
+
+            m_slice_count++;
+        }
+
+        signal_merge_if_needed(entry->ushard);
+
+        e = next_e;
+    }
+
+    return tid;
+}
+
+void impl::signal_merge_if_needed(uint16_t ushard)
+{
+    if (m_ushards[ushard].size() < 16)
+    {
+        return;
+    }
+
+    if (m_merge_locks[ushard] == true)
+    {
+        return;
+    }
+
+    m_merge_locks[ushard] = true;
+    m_merge_cond.signal();
 }
 
 void impl::print_rate()
@@ -218,6 +262,8 @@ impl::impl(const std::string_view& path,
     {
         m_ushards.emplace_back(slices_t(&m_slices));
     }
+
+    m_merge_locks.resize(ushards);
 }
 
 }

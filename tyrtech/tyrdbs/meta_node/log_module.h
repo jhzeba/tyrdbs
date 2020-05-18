@@ -59,6 +59,7 @@ private:
         uint16_t ushard{0};
         uint16_t ref{0};
         uint64_t tid{0};
+        uint64_t size{0};
         uuid_t id;
     } __attribute__ ((packed));
 
@@ -72,19 +73,35 @@ private:
     using ushards_t =
             std::vector<slices_t>;
 
+    using merge_locks_t =
+            std::vector<bool>;
+
+    using merge_requests_t =
+            slab_list<uint16_t, 128>;
+
 private:
+    merge_requests_t::entry_pool_t m_merge;
     slices_t::entry_pool_t m_slices;
 
-    uint32_t m_max_slices{0};
     uint64_t m_next_tid{1};
+
+    uint32_t m_max_slices{0};
+    uint32_t m_slice_count{0};
+    gt::condition m_slice_count_cond;
+
+    merge_locks_t m_merge_locks;
+    gt::condition m_merge_cond;
 
     ushards_t m_ushards;
 
     slices_t m_removed_slices{&m_slices};
 
 private:
-    uint64_t update_slices(net::socket_channel* channel);
+    uint64_t update_slices(net::socket_channel* channel, bool merge_request);
+
     bool process_block(const block_parser& block, slices_t* transaction);
+    uint64_t commit(slices_t* transaction);
+    void signal_merge_if_needed(uint16_t ushard);
 
     void print_rate();
 };
