@@ -133,6 +133,8 @@ private:
 
                     response.send();
                 }
+
+                channel.flush();
             }
         }
         catch (io::socket::disconnected_exception&)

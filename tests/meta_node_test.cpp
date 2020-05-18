@@ -55,7 +55,7 @@ void update_iteration(net::socket_channel* channel, uint32_t slice_count)
         auto slice = slices.add_value();
 
         slice.set_flags(0x01);
-        slice.set_ushard(i);
+        slice.set_ushard_id(i);
         slice.add_id(id.bytes());
     }
 

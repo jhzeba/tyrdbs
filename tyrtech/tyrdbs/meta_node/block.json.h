@@ -15,12 +15,12 @@ struct slice_builder final : public tyrtech::message::struct_builder<2, 12>
     {
     }
 
-    void set_flags(uint16_t value)
+    void set_ushard_id(uint16_t value)
     {
         *reinterpret_cast<uint16_t*>(m_static + 0) = value;
     }
 
-    void set_ushard(uint16_t value)
+    void set_flags(uint16_t value)
     {
         *reinterpret_cast<uint16_t*>(m_static + 2) = value;
     }
@@ -62,12 +62,12 @@ struct slice_parser final : public tyrtech::message::struct_parser<2, 12>
 
     slice_parser() = default;
 
-    decltype(auto) flags() const
+    decltype(auto) ushard_id() const
     {
         return *reinterpret_cast<const uint16_t*>(m_static + 0);
     }
 
-    decltype(auto) ushard() const
+    decltype(auto) flags() const
     {
         return *reinterpret_cast<const uint16_t*>(m_static + 2);
     }

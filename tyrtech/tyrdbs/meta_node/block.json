@@ -3,9 +3,9 @@
     {
         "slice":
         {
+            "ushard_id": "uint16#",
             "flags": "uint16#",
-            "ushard": "uint16#",
-	    "size": "uint64#",
+            "size": "uint64#",
             "tid": "uint64",
             "id": "string"
         },

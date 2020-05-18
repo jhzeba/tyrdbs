@@ -4,38 +4,58 @@
         "log":
         {
             "id": 1,
-            "exceptions": [
-                "block_too_big_exception",
-                "invalid_id_exception"
-            ],
-            "update_slices":
+            "exceptions": ["invalid_request_exception"],
+            "fetch_slices":
             {
                 "id": 1,
                 "request":
                 {
-                    "merge_request": "uint8#"
+                    "ushard_id": "uint16#"
+                },
+                "response":
+                {
+		    "handle": "uint32#"
+                }
+            },
+	    "release_slices":
+	    {
+		"id": 2,
+		"request":
+		{
+		    "handle": "uint32#"
+		},
+		"response":
+		{
+		}
+	    },
+            "update_slices":
+            {
+                "id": 3,
+                "request":
+                {
                 },
                 "response":
                 {
                     "tid": "uint64#"
                 }
             },
-            "fetch_slices":
+            "fetch_slices_to_merge":
             {
-                "id": 2,
+                "id": 4,
                 "request":
                 {
-                    "ushard": "uint16#"
                 },
                 "response":
                 {
+                    "ushard_id": "uint16#"
                 }
             },
-            "get_merge_candidates":
+            "merge_slices":
             {
-                "id": 3,
+                "id": 5,
                 "request":
                 {
+                    "ushard_id": "uint16#"
                 },
                 "response":
                 {

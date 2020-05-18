@@ -90,37 +90,37 @@ public:
         free_entry(e);
     }
 
-    uint32_t begin()
+    uint32_t begin() const
     {
         return m_front;
     }
 
-    uint32_t next(uint32_t e)
+    uint32_t next(uint32_t e) const
     {
         return get_entry(e).next;
     }
 
-    uint32_t front()
+    uint32_t front() const
     {
         return m_front;
     }
 
-    uint32_t back()
+    uint32_t back() const
     {
         return m_back;
     }
 
-    T* front_item()
+    T* front_item() const
     {
         return &get_entry(m_front).item;
     }
 
-    T* back_item()
+    T* back_item() const
     {
         return &get_entry(m_back).item;
     }
 
-    T* item(uint32_t e)
+    T* item(uint32_t e) const
     {
         return &get_entry(e).item;
     }
@@ -199,7 +199,7 @@ private:
         m_entry_pool->free(handle);
     }
 
-    entry& get_entry(uint32_t handle)
+    entry& get_entry(uint32_t handle) const
     {
         assert(likely(handle != invalid_handle));
         return m_entry_pool->get(handle);

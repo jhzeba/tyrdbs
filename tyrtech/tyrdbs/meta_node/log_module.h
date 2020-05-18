@@ -26,7 +26,24 @@ public:
         context& operator=(context&& other) noexcept;
 
     private:
-        context(impl* impl);
+        using ref_t =
+                slab_list<uint32_t, 32768>;
+
+        using refs_t =
+                std::unordered_map<uint32_t, ref_t>;
+
+    private:
+        class impl* impl{nullptr};
+
+        uint16_t merging_ushard_id{0};
+        bool merge_in_progress{false};
+
+        uint32_t next_handle{1};
+
+        refs_t m_refs;
+
+    private:
+        context(class impl* impl);
 
     private:
         friend class impl;
@@ -36,17 +53,25 @@ public:
     context create_context(const std::shared_ptr<io::socket>& remote);
 
 public:
-    void update_slices(const update_slices::request_parser_t& request,
-                       net::socket_channel* channel,
-                       context* ctx);
-
     void fetch_slices(const fetch_slices::request_parser_t& request,
                       net::socket_channel* channel,
                       context* ctx);
 
-    void get_merge_candidates(const get_merge_candidates::request_parser_t& request,
-                              net::socket_channel* channel,
-                              context* ctx);
+    void release_slices(const release_slices::request_parser_t& request,
+                        net::socket_channel* channel,
+                        context* ctx);
+
+    void update_slices(const update_slices::request_parser_t& request,
+                       net::socket_channel* channel,
+                       context* ctx);
+
+    void fetch_slices_to_merge(const fetch_slices_to_merge::request_parser_t& request,
+                               net::socket_channel* channel,
+                               context* ctx);
+
+    void merge_slices(const merge_slices::request_parser_t& request,
+                      net::socket_channel* channel,
+                      context* ctx);
 
 public:
     impl(const std::string_view& path,
@@ -56,7 +81,7 @@ public:
 private:
     struct slice_entry
     {
-        uint16_t ushard{0};
+        uint16_t ushard_id{0};
         uint16_t ref{0};
         uint64_t tid{0};
         uint64_t size{0};
@@ -73,15 +98,16 @@ private:
     using ushards_t =
             std::vector<slices_t>;
 
-    using merge_locks_t =
+    using bool_vec_t =
             std::vector<bool>;
 
     using merge_requests_t =
             slab_list<uint16_t, 128>;
 
 private:
-    merge_requests_t::entry_pool_t m_merge;
-    slices_t::entry_pool_t m_slices;
+    slices_t::entry_pool_t m_slice_pool;
+    merge_requests_t::entry_pool_t m_merge_request_pool;
+    context::ref_t::entry_pool_t m_ref_pool;
 
     uint64_t m_next_tid{1};
 
@@ -89,19 +115,28 @@ private:
     uint32_t m_slice_count{0};
     gt::condition m_slice_count_cond;
 
-    merge_locks_t m_merge_locks;
+    bool_vec_t m_merge_locks;
+    bool_vec_t m_merges_requested;
+    merge_requests_t m_merge_requests{&m_merge_request_pool};
+
     gt::condition m_merge_cond;
 
     ushards_t m_ushards;
 
-    slices_t m_removed_slices{&m_slices};
+    slices_t m_removed_slices{&m_slice_pool};
 
 private:
-    uint64_t update_slices(net::socket_channel* channel, bool merge_request);
-
-    bool process_block(const block_parser& block, slices_t* transaction);
+    slices_t load_transaction(net::socket_channel* channel, int32_t ushard_id);
     uint64_t commit(slices_t* transaction);
-    void signal_merge_if_needed(uint16_t ushard);
+
+    bool load_block(const block_parser& block, slices_t* transaction, int32_t ushard_id);
+
+    uint16_t get_ushard_id_to_merge();
+    void release_merge_for(uint16_t ushard_id);
+    void signal_merge_if_needed(uint16_t ushard_id);
+
+    void incref(const slices_t& slices, context::ref_t* ref);
+    void decref(const context::ref_t& ref);
 
     void print_rate();
 };

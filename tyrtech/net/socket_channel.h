@@ -2,6 +2,7 @@
 
 
 #include <common/buffered_reader.h>
+#include <common/buffered_writer.h>
 #include <io/socket_channel.h>
 
 
@@ -19,6 +20,8 @@ public:
 
     uint64_t offset() const override;
     void set_offset(uint64_t offset) override;
+
+    void flush();
 
     template<typename T>
     void read(T* data)
@@ -42,13 +45,19 @@ private:
     using reader_t =
             buffered_reader<buffer_t, io::socket_channel>;
 
+    using writer_t =
+            buffered_writer<buffer_t, io::socket_channel>;
+
 private:
     socket_ptr m_socket;
 
-    buffer_t m_buffer;
     io::socket_channel m_channel;
 
-    reader_t m_reader{&m_buffer, &m_channel};
+    buffer_t m_reader_buffer;
+    reader_t m_reader{&m_reader_buffer, &m_channel};
+
+    buffer_t m_writer_buffer;
+    writer_t m_writer{&m_writer_buffer, &m_channel};
 };
 
 }

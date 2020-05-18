@@ -6,7 +6,7 @@ namespace tyrtech::net {
 
 uint32_t socket_channel::write(const char* data, uint32_t size)
 {
-    m_channel.write(data, size);
+    m_writer.write(data, size);
 
     return size;
 }
@@ -20,12 +20,17 @@ uint32_t socket_channel::read(char* data, uint32_t size)
 
 uint64_t socket_channel::offset() const
 {
-    return m_reader.offset();
+    assert(false);
 }
 
 void socket_channel::set_offset(uint64_t offset)
 {
-    m_channel.set_offset(offset);
+    assert(false);
+}
+
+void socket_channel::flush()
+{
+    m_writer.flush();
 }
 
 std::string_view socket_channel::uri() const

@@ -27,6 +27,8 @@ public:
 
     decltype(auto) wait()
     {
+        m_channel->flush();
+
         uint16_t* size = reinterpret_cast<uint16_t*>(m_buffer.data());
 
         m_channel->read(size);
