@@ -27,10 +27,7 @@ public:
     uint64_t commit();
 
 public:
-    slice_writer(io::channel* channel)
-      : m_writer(&m_buffer, channel)
-    {
-    }
+    slice_writer(io::channel* channel);
 
 private:
     class index_writer : private disallow_copy, disallow_move

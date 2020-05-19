@@ -5,62 +5,41 @@
         {
             "id": 1,
             "exceptions": ["invalid_request_exception"],
-            "fetch_slices":
+            "fetch":
             {
                 "id": 1,
                 "request":
                 {
-                    "ushard_id": "uint16#"
                 },
                 "response":
                 {
-		    "handle": "uint32#"
                 }
             },
-	    "release_slices":
-	    {
-		"id": 2,
-		"request":
-		{
-		    "handle": "uint32#"
-		},
-		"response":
-		{
-		}
-	    },
-            "update_slices":
+            "update":
             {
-                "id": 3,
+                "id": 2,
                 "request":
                 {
+		    "id": "uint64#",
+		    "size": "uint64#",
+		    "key_count": "uint64#"
                 },
                 "response":
                 {
                     "tid": "uint64#"
                 }
             },
-            "fetch_slices_to_merge":
-            {
-                "id": 4,
-                "request":
-                {
-                },
-                "response":
-                {
-                    "ushard_id": "uint16#"
-                }
-            },
-            "merge_slices":
-            {
-                "id": 5,
-                "request":
-                {
-                    "ushard_id": "uint16#"
-                },
-                "response":
-                {
-                }
-            }
+	    "merge":
+	    {
+		"id": 3,
+		"request":
+		{
+		},
+		"response":
+		{
+		    "terminate": "uint8"
+		}
+	    }
         }
     }
 }

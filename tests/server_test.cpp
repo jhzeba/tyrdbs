@@ -1,9 +1,9 @@
 #include <common/cpu_sched.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/uri.h>
 #include <net/rpc_server.h>
 #include <net/rpc_request.h>
+#include <net/uri.h>
 
 #include <tests/services.json.h>
 
@@ -124,7 +124,7 @@ void client(server_t* s)
     {
         logger::debug("iteration: {}", i);
 
-        net::socket_channel channel(io::uri::connect(s->uri(), 0), 0);
+        net::socket_channel channel(net::uri::connect(s->uri(), 0), 0);
 
         {
             net::rpc_request<tests::module1::func1> request(&channel);
@@ -175,7 +175,7 @@ int main()
 
     service1_t srv(&m1, &m2);
 
-    server_t s(io::uri::listen(uri), &srv);
+    server_t s(net::uri::listen(uri), &srv);
 
     gt::create_thread(&client, &s);
 

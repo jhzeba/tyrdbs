@@ -1,7 +1,7 @@
 #include <gt/engine.h>
 #include <io/file.h>
-#include <io/uri.h>
 #include <net/rpc_server.h>
+#include <net/uri.h>
 
 #include <tyrdbs/meta_node/service.h>
 #include <tyrdbs/meta_node/service.json.h>
@@ -18,13 +18,11 @@ using server_t =
         net::rpc_server<service_t>;
 
 
-void service_thread(const std::string_view& uri,
-                    uint32_t max_slices,
-                    uint16_t ushards)
+void service_thread(const std::string_view& uri, uint32_t max_slices)
 {
-    auto ch = io::uri::listen(uri);
+    auto ch = net::uri::listen(uri);
 
-    log::impl impl("data", max_slices, ushards);
+    log::impl impl("data", max_slices);
     service_t service(&impl);
 
     server_t server(ch, &service);

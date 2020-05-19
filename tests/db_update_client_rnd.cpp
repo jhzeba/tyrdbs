@@ -4,8 +4,8 @@
 #include <common/logger.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/uri.h>
 #include <net/rpc_request.h>
+#include <net/uri.h>
 
 #include <tests/db_server_service.json.h>
 #include <tests/data.json.h>
@@ -106,7 +106,7 @@ void update_thread(const std::string_view& uri,
                    uint32_t target_rate,
                    FILE* stats_fd)
 {
-    net::socket_channel channel(io::uri::connect(uri, 0), 0);
+    net::socket_channel channel(net::uri::connect(uri, 0), 0);
 
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));

@@ -2,8 +2,8 @@
 #include <common/cpu_sched.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/uri.h>
 #include <net/rpc_request.h>
+#include <net/uri.h>
 
 #include <tests/stats.h>
 #include <tests/ping_module.json.h>
@@ -14,7 +14,7 @@ using namespace tyrtech;
 
 void client(uint32_t iterations, const std::string_view& uri, tests::stats* s)
 {
-    net::socket_channel channel(io::uri::connect(uri, 0), 0);
+    net::socket_channel channel(net::uri::connect(uri, 0), 0);
 
     for (uint32_t i = 0; i < iterations; i++)
     {

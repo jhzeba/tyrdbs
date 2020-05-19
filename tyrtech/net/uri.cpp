@@ -1,13 +1,13 @@
 #include <common/branch_prediction.h>
 #include <io/tcp_socket.h>
 #include <io/unix_socket.h>
-#include <io/uri.h>
+#include <net/uri.h>
 
 #include <regex>
 #include <cassert>
 
 
-namespace tyrtech::io::uri {
+namespace tyrtech::net::uri {
 
 
 enum class proto
@@ -82,7 +82,7 @@ decltype(auto) parse(const std::string_view& uri)
 }
 
 
-std::shared_ptr<socket> connect(const std::string_view& uri, uint64_t timeout)
+std::shared_ptr<io::socket> connect(const std::string_view& uri, uint64_t timeout)
 {
     auto params = parse(uri);
 
@@ -90,11 +90,11 @@ std::shared_ptr<socket> connect(const std::string_view& uri, uint64_t timeout)
     {
         case proto::TCP:
         {
-            return tcp::connect(params.host, params.service, timeout);
+            return io::tcp::connect(params.host, params.service, timeout);
         }
         case proto::UNIX:
         {
-            return unix::connect(params.path, timeout);
+            return io::unix::connect(params.path, timeout);
         }
         default:
         {
@@ -103,7 +103,7 @@ std::shared_ptr<socket> connect(const std::string_view& uri, uint64_t timeout)
     }
 }
 
-std::shared_ptr<socket> listen(const std::string_view& uri)
+std::shared_ptr<io::socket> listen(const std::string_view& uri)
 {
     auto params = parse(uri);
 
@@ -111,11 +111,11 @@ std::shared_ptr<socket> listen(const std::string_view& uri)
     {
         case proto::TCP:
         {
-            return tcp::listen(params.host, params.service);
+            return io::tcp::listen(params.host, params.service);
         }
         case proto::UNIX:
         {
-            return unix::listen(params.path);
+            return io::unix::listen(params.path);
         }
         default:
         {

@@ -10,8 +10,7 @@ io_sources = [
     'socket_channel.cpp',
     'file_channel.cpp',
     'io_uring.cpp',
-    'queue_flow.cpp',
-    'uri.cpp'
+    'queue_flow.cpp'
 ]
 
 env.StaticLibrary(target='{0}/io'.format(BUILD_DIR), source=io_sources)

@@ -4,10 +4,9 @@
 #include <common/logger.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/uri.h>
 #include <net/rpc_request.h>
+#include <net/uri.h>
 #include <tyrdbs/meta_node/service.json.h>
-#include <tyrdbs/meta_node/block.json.h>
 
 #include <random>
 #include <set>
@@ -16,31 +15,42 @@
 using namespace tyrtech;
 
 
-void update_iteration(net::socket_channel* channel,
-                      uint32_t slice_count,
-                      std::mt19937& generator,
-                      std::uniform_int_distribution<uint32_t>& distribution)
+void update_iteration(const std::set<uint64_t>& keys, uint32_t iteration, net::socket_channel* channel)
 {
-    net::rpc_request<tyrdbs::meta_node::log::update_slices> request(channel);
+    net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
     auto message = request.add_message();
+
+    message.set_id(iteration);
+    message.set_size(100);
+    message.set_key_count(1000);
 
     request.execute();
 
+    /*
     std::array<char, 8192> buffer;
     message::builder builder(buffer.data(), buffer.size());
     tyrdbs::meta_node::block_builder block(&builder);
 
-    auto slices = block.add_slices();
+    auto entries = block.add_entries();
 
-    for (uint32_t i = 0; i < slice_count; i++)
+    uint32_t ushard_id = 0;
+
+    for (auto& key : keys)
     {
+        uint64_t _key = __builtin_bswap64(key + iteration);
+        std::string_view key_str(reinterpret_cast<const char*>(&_key), sizeof(_key));
+
         uint16_t bytes_required = 0;
 
-        bytes_required += tyrdbs::meta_node::block_builder::slices_bytes_required();
+        bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
+        bytes_required += key_str.size();
+        bytes_required += key_str.size();
 
         if (builder.available_space() <= bytes_required)
         {
-            slices.finalize();
+            entries.finalize();
             block.finalize();
 
             channel->write(buffer.data(), builder.size());
@@ -48,22 +58,24 @@ void update_iteration(net::socket_channel* channel,
             builder = message::builder(buffer.data(), buffer.size());
             block = tyrdbs::meta_node::block_builder(&builder);
 
-            slices = block.add_slices();
+            entries = block.add_entries();
         }
 
-        auto slice = slices.add_value();
+        auto entry = entries.add_value();
 
-        slice.set_id(distribution(generator));
-        slice.set_flags(0x01);
-        slice.set_ushard_id(i);
+        entry.set_flags(0x01);
+        entry.set_ushard_id(ushard_id++);
+        entry.add_key(key_str);
+        entry.add_value(key_str);
     }
 
     block.set_flags(1);
 
-    slices.finalize();
+    entries.finalize();
     block.finalize();
 
     channel->write(buffer.data(), builder.size());
+    */
 
     request.wait();
 }
@@ -75,7 +87,7 @@ void update_thread(const std::string_view& uri,
                    uint32_t target_rate,
                    FILE* stats_fd)
 {
-    net::socket_channel channel(io::uri::connect(uri, 0), 0);
+    net::socket_channel channel(net::uri::connect(uri, 0), 0);
 
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));
@@ -83,29 +95,18 @@ void update_thread(const std::string_view& uri,
     uint64_t last_print = 0;
     auto t0 = clock::now();
 
+    std::set<uint64_t> keys;
+
+    while (keys.size() != slices)
+    {
+        keys.insert(distribution(generator));
+    }
+
     for (uint32_t i = 0; i < iterations; i++)
     {
         auto t1 = clock::now();
 
-        update_iteration(&channel, slices, generator, distribution);
-
-        /*
-        std::set<uint64_t> key_set;
-
-        while (key_set.size() != keys)
-        {
-            key_set.insert(distribution(generator));
-        }
-
-        reader r;
-        r.iterator = key_set.begin();
-        r.end = key_set.end();
-
-        r.value = *r.iterator;
-        r.value_part = std::string_view(reinterpret_cast<const char*>(&r.value),
-                                        sizeof(r.value));
-
-        */
+        update_iteration(keys, i, &channel);
 
         auto t2 = clock::now();
 
@@ -116,10 +117,11 @@ void update_thread(const std::string_view& uri,
         {
             last_print = total_t;
 
-            logger::notice("#{} transactions commited in {:.2f} ms, {:.2f} transactions/s",
+            logger::notice("#{}: transaction commited in {:.2f} ms, {:.2f} transactions/s, {:.2f} keys/s",
                            i,
                            iter_t / 1000000.,
-                           (i + 1) * 1000000000. / total_t);
+                           (i + 1) * 1000000000. / total_t,
+                           (i + 1) * slices * 1000000000. / total_t);
         }
 
         if (stats_fd != nullptr)

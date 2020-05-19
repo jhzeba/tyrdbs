@@ -144,10 +144,10 @@ void slice_writer::flush()
 {
     assert(likely(m_commited == false));
 
-    if (m_last_eor == false)
-    {
-        throw invalid_data_exception("data not complete");
-    }
+    // if (m_last_eor == false)
+    // {
+    //     throw invalid_data_exception("data not complete");
+    // }
 
     uint64_t location = store(&m_node, true);
     m_writer.write(location::invalid_size);
@@ -168,6 +168,11 @@ void slice_writer::flush()
     m_writer.write(m_header);
 
     m_writer.flush();
+}
+
+slice_writer::slice_writer(io::channel* channel)
+  : m_writer(&m_buffer, channel)
+{
 }
 
 uint64_t slice_writer::commit()

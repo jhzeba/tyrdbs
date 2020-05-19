@@ -3,8 +3,8 @@
 #include <common/clock.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/uri.h>
 #include <net/rpc_server.h>
+#include <net/uri.h>
 
 #include <tests/ping_service.json.h>
 
@@ -113,7 +113,7 @@ int main(int argc, const char* argv[])
     module::impl p;
     ping_service_t srv(&p);
 
-    server_t s(io::uri::listen(cmd.get<std::string_view>("uri")), &srv);
+    server_t s(net::uri::listen(cmd.get<std::string_view>("uri")), &srv);
 
     gt::run();
 

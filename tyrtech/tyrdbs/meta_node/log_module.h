@@ -1,13 +1,10 @@
 #pragma once
 
 
-#include <common/uuid.h>
-#include <common/slab_list.h>
 #include <gt/condition.h>
-#include <tyrdbs/slice_writer.h>
-#include <tyrdbs/iterator.h>
 #include <tyrdbs/meta_node/modules.json.h>
-#include <tyrdbs/meta_node/block.json.h>
+
+#include <queue>
 
 
 namespace tyrtech::tyrdbs::meta_node::log {
@@ -26,24 +23,7 @@ public:
         context& operator=(context&& other) noexcept;
 
     private:
-        using ref_t =
-                slab_list<uint32_t, 32768>;
-
-        using refs_t =
-                std::unordered_map<uint32_t, ref_t>;
-
-    private:
-        class impl* impl{nullptr};
-
-        uint16_t merging_ushard_id{0};
-        bool merge_in_progress{false};
-
-        uint32_t next_handle{1};
-
-        refs_t m_refs;
-
-    private:
-        context(class impl* impl);
+        context(impl* impl);
 
     private:
         friend class impl;
@@ -53,90 +33,71 @@ public:
     context create_context(const std::shared_ptr<io::socket>& remote);
 
 public:
-    void fetch_slices(const fetch_slices::request_parser_t& request,
-                      net::socket_channel* channel,
-                      context* ctx);
+    void fetch(const fetch::request_parser_t& request,
+               net::socket_channel* channel,
+               context* ctx);
 
-    void release_slices(const release_slices::request_parser_t& request,
-                        net::socket_channel* channel,
-                        context* ctx);
+    void update(const update::request_parser_t& request,
+                net::socket_channel* channel,
+                context* ctx);
 
-    void update_slices(const update_slices::request_parser_t& request,
-                       net::socket_channel* channel,
-                       context* ctx);
-
-    void fetch_slices_to_merge(const fetch_slices_to_merge::request_parser_t& request,
-                               net::socket_channel* channel,
-                               context* ctx);
-
-    void merge_slices(const merge_slices::request_parser_t& request,
-                      net::socket_channel* channel,
-                      context* ctx);
+    void merge(const merge::request_parser_t& request,
+               net::socket_channel* channel,
+               context* ctx);
 
 public:
-    impl(const std::string_view& path,
-         uint32_t max_slices,
-         uint16_t ushards);
+    impl(const std::string_view& path, uint32_t max_slices);
 
 private:
-    struct slice_entry
+    static constexpr uint32_t max_tiers{32};
+
+private:
+    struct slice
     {
         uint64_t id;
-        uint16_t ushard_id{0};
-        uint16_t ref{0};
-        uint64_t tid{0};
-        uint64_t size{0};
+        uint64_t tid;
+        uint64_t size;
+        uint64_t key_count;
     } __attribute__ ((packed));
 
 private:
     using buffer_t =
             std::array<char, net::socket_channel::buffer_size>;
 
-    using slices_t =
-            slab_list<slice_entry, 32768>;
+    using tier_t =
+            std::vector<slice>;
 
-    using ushards_t =
-            std::vector<slices_t>;
+    using tiers_t =
+            std::vector<tier_t>;
 
     using bool_vec_t =
             std::vector<bool>;
 
     using merge_requests_t =
-            slab_list<uint16_t, 128>;
+            std::queue<uint8_t>;
 
 private:
-    slices_t::entry_pool_t m_slice_pool;
-    merge_requests_t::entry_pool_t m_merge_request_pool;
-    context::ref_t::entry_pool_t m_ref_pool;
-
     uint64_t m_next_tid{1};
-
     uint32_t m_max_slices{0};
+
     uint32_t m_slice_count{0};
     gt::condition m_slice_count_cond;
 
-    bool_vec_t m_merge_locks;
-    bool_vec_t m_merges_requested;
-    merge_requests_t m_merge_requests{&m_merge_request_pool};
-
     gt::condition m_merge_cond;
+    bool_vec_t m_merge_locks;
 
-    ushards_t m_ushards;
+    bool_vec_t m_merge_request_filter;
+    merge_requests_t m_merge_requests;
 
-    slices_t m_removed_slices{&m_slice_pool};
+    tiers_t m_tiers;
 
 private:
-    slices_t load_transaction(net::socket_channel* channel, int32_t ushard_id);
-    uint64_t commit(slices_t* transaction);
+    uint32_t tier_of(uint64_t key_count);
 
-    bool load_block(const block_parser& block, slices_t* transaction, int32_t ushard_id);
+    void merge(net::socket_channel* channel, uint8_t tier);
+    void merge_thread(net::socket_channel* channel);
 
-    uint16_t get_ushard_id_to_merge();
-    void release_merge_for(uint16_t ushard_id);
-    void signal_merge_if_needed(uint16_t ushard_id);
-
-    void incref(const slices_t& slices, context::ref_t* ref);
-    void decref(const context::ref_t& ref);
+    void request_merge_if_needed(uint8_t tier);
 
     void print_rate();
 };

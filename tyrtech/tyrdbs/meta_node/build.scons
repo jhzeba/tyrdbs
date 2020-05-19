@@ -12,12 +12,16 @@ default_libs = [
     'uuid'
 ]
 
-meta_node_sources = [
-    'meta_node.cpp',
-    'log_module.cpp',
-    'service.cpp'
-]
-
 env.Program('meta_node',
-            source=meta_node_sources,
+            source=[
+                'meta_node.cpp',
+                'log_module.cpp',
+                'service.cpp'
+            ],
+            LIBS=default_libs)
+
+env.Program('meta_merge',
+            source=[
+                'meta_merge.cpp'
+            ],
             LIBS=default_libs)
