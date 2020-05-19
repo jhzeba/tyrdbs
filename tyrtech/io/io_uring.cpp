@@ -175,7 +175,6 @@ int32_t preadv(int32_t fd, iovec* iov, uint32_t size, int64_t offset)
 
     io_uring_prep_readv(sqe, fd, iov, size, offset);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     return wait_for(&request);
 }
@@ -187,7 +186,6 @@ int32_t pwritev(int32_t fd, iovec* iov, uint32_t size, int64_t offset)
 
     io_uring_prep_writev(sqe, fd, iov, size, offset);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     return wait_for(&request);
 }
@@ -235,7 +233,6 @@ int32_t recv(int32_t fd, char* buffer, uint32_t size, int32_t flags, uint64_t ti
 
     io_uring_prep_recv(sqe, fd, buffer, size, flags);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     if (timeout != 0)
     {
@@ -252,7 +249,6 @@ int32_t accept(int32_t fd, sockaddr* address, uint32_t* address_size, uint64_t t
 
     io_uring_prep_accept(sqe, fd, address, address_size, 0);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     if (timeout != 0)
     {
@@ -269,7 +265,6 @@ int32_t connect(int32_t fd, const sockaddr* address, uint32_t address_size, uint
 
     io_uring_prep_connect(sqe, fd, const_cast<sockaddr*>(address), address_size);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     if (timeout != 0)
     {
@@ -286,7 +281,6 @@ int32_t openat(int32_t dfd, const char* path, int32_t flags, mode_t mode)
 
     io_uring_prep_openat(sqe, dfd, path, flags, mode);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     return wait_for(&request);
 }
@@ -309,7 +303,6 @@ int32_t sync(int32_t fd, uint32_t flags)
 
     io_uring_prep_fsync(sqe, fd, flags);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     return wait_for(&request);
 }
@@ -345,7 +338,6 @@ int32_t sleep(uint64_t msec)
 
     io_uring_prep_timeout(sqe, &ts, 0, 0);
     io_uring_sqe_set_data(sqe, &request);
-    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
 
     return io::wait_for(&request);
 }

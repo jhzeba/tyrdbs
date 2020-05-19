@@ -2,7 +2,6 @@
 #include <common/cpu_sched.h>
 #include <common/clock.h>
 #include <common/logger.h>
-#include <common/uuid.h>
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/uri.h>
@@ -17,7 +16,10 @@
 using namespace tyrtech;
 
 
-void update_iteration(net::socket_channel* channel, uint32_t slice_count)
+void update_iteration(net::socket_channel* channel,
+                      uint32_t slice_count,
+                      std::mt19937& generator,
+                      std::uniform_int_distribution<uint32_t>& distribution)
 {
     net::rpc_request<tyrdbs::meta_node::log::update_slices> request(channel);
     auto message = request.add_message();
@@ -32,12 +34,9 @@ void update_iteration(net::socket_channel* channel, uint32_t slice_count)
 
     for (uint32_t i = 0; i < slice_count; i++)
     {
-        uuid id;
-
         uint16_t bytes_required = 0;
 
-        bytes_required += tyrdbs::meta_node::slice_builder::id_bytes_required();
-        bytes_required += id.bytes().size();
+        bytes_required += tyrdbs::meta_node::block_builder::slices_bytes_required();
 
         if (builder.available_space() <= bytes_required)
         {
@@ -54,9 +53,9 @@ void update_iteration(net::socket_channel* channel, uint32_t slice_count)
 
         auto slice = slices.add_value();
 
+        slice.set_id(distribution(generator));
         slice.set_flags(0x01);
         slice.set_ushard_id(i);
-        slice.add_id(id.bytes());
     }
 
     block.set_flags(1);
@@ -88,7 +87,7 @@ void update_thread(const std::string_view& uri,
     {
         auto t1 = clock::now();
 
-        update_iteration(&channel, slices);
+        update_iteration(&channel, slices, generator, distribution);
 
         /*
         std::set<uint64_t> key_set;
@@ -113,7 +112,7 @@ void update_thread(const std::string_view& uri,
         uint64_t iter_t = t2 - t1;
         uint64_t total_t = t2 - t0;
 
-        if (total_t > last_print + 1000000000)
+        if ((i % target_rate) == 0)
         {
             last_print = total_t;
 

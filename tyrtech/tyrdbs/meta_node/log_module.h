@@ -81,11 +81,11 @@ public:
 private:
     struct slice_entry
     {
+        uint64_t id;
         uint16_t ushard_id{0};
         uint16_t ref{0};
         uint64_t tid{0};
         uint64_t size{0};
-        uuid_t id;
     } __attribute__ ((packed));
 
 private:

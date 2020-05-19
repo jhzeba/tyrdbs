@@ -3,11 +3,11 @@
     {
         "slice":
         {
+            "id": "uint64#",
             "ushard_id": "uint16#",
             "flags": "uint16#",
             "size": "uint64#",
-            "tid": "uint64",
-            "id": "string"
+            "tid": "uint64"
         },
         "block":
         {

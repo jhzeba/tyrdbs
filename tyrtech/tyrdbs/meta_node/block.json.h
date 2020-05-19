@@ -8,52 +8,46 @@
 namespace tyrtech::tyrdbs::meta_node {
 
 
-struct slice_builder final : public tyrtech::message::struct_builder<2, 12>
+struct slice_builder final : public tyrtech::message::struct_builder<1, 20>
 {
     slice_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
+    void set_id(uint64_t value)
+    {
+        *reinterpret_cast<uint64_t*>(m_static + 0) = value;
+    }
+
     void set_ushard_id(uint16_t value)
     {
-        *reinterpret_cast<uint16_t*>(m_static + 0) = value;
+        *reinterpret_cast<uint16_t*>(m_static + 8) = value;
     }
 
     void set_flags(uint16_t value)
     {
-        *reinterpret_cast<uint16_t*>(m_static + 2) = value;
+        *reinterpret_cast<uint16_t*>(m_static + 10) = value;
     }
 
     void set_size(uint64_t value)
     {
-        *reinterpret_cast<uint64_t*>(m_static + 4) = value;
+        *reinterpret_cast<uint64_t*>(m_static + 12) = value;
     }
 
     void add_tid(const uint64_t& value)
     {
         set_offset<0>();
-        struct_builder<2, 12>::add_value(value);
+        struct_builder<1, 20>::add_value(value);
     }
 
     static constexpr uint16_t tid_bytes_required()
     {
         return tyrtech::message::element<uint64_t>::size;
     }
-
-    void add_id(const std::string_view& value)
-    {
-        set_offset<1>();
-        struct_builder<2, 12>::add_value(value);
-    }
-
-    static constexpr uint16_t id_bytes_required()
-    {
-        return tyrtech::message::element<std::string_view>::size;
-    }
 };
 
-struct slice_parser final : public tyrtech::message::struct_parser<2, 12>
+struct slice_parser final : public tyrtech::message::struct_parser<1, 20>
 {
     slice_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -62,19 +56,24 @@ struct slice_parser final : public tyrtech::message::struct_parser<2, 12>
 
     slice_parser() = default;
 
+    decltype(auto) id() const
+    {
+        return *reinterpret_cast<const uint64_t*>(m_static + 0);
+    }
+
     decltype(auto) ushard_id() const
     {
-        return *reinterpret_cast<const uint16_t*>(m_static + 0);
+        return *reinterpret_cast<const uint16_t*>(m_static + 8);
     }
 
     decltype(auto) flags() const
     {
-        return *reinterpret_cast<const uint16_t*>(m_static + 2);
+        return *reinterpret_cast<const uint16_t*>(m_static + 10);
     }
 
     decltype(auto) size() const
     {
-        return *reinterpret_cast<const uint64_t*>(m_static + 4);
+        return *reinterpret_cast<const uint64_t*>(m_static + 12);
     }
 
     bool has_tid() const
@@ -85,16 +84,6 @@ struct slice_parser final : public tyrtech::message::struct_parser<2, 12>
     decltype(auto) tid() const
     {
         return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
-    }
-
-    bool has_id() const
-    {
-        return has_offset<1>();
-    }
-
-    decltype(auto) id() const
-    {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<1>());
     }
 };
 

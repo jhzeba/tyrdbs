@@ -1,7 +1,5 @@
-#include <common/uuid.h>
 #include <common/logger.h>
 #include <common/clock.h>
-#include <gt/async.h>
 #include <net/rpc_response.h>
 #include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
@@ -87,9 +85,8 @@ void impl::fetch_slices(const fetch_slices::request_parser_t& request,
 
         uint16_t bytes_required = 0;
 
-        bytes_required += tyrdbs::meta_node::slice_builder::id_bytes_required();
+        bytes_required += tyrdbs::meta_node::block_builder::slices_bytes_required();
         bytes_required += tyrdbs::meta_node::slice_builder::tid_bytes_required();
-        bytes_required += sizeof(uuid_t);
 
         if (builder.available_space() <= bytes_required)
         {
@@ -106,10 +103,10 @@ void impl::fetch_slices(const fetch_slices::request_parser_t& request,
 
         auto slice = slices.add_value();
 
+        slice.set_id(entry->id);
         slice.set_ushard_id(entry->ushard_id);
         slice.set_size(entry->size);
         slice.add_tid(entry->tid);
-        slice.add_id(std::string_view(reinterpret_cast<const char*>(entry->id), sizeof(uuid_t)));
 
         e = it.first->second.next(e);
     }
@@ -281,18 +278,6 @@ bool impl::load_block(const block_parser& block, slices_t* transaction, int32_t 
     {
         auto slice = slices.value();
 
-        if (slice.has_id() == false)
-        {
-            continue;
-        }
-
-        auto id = slice.id();
-
-        if (unlikely(id.size() != sizeof(uuid_t)))
-        {
-            throw invalid_request_exception("invalid slice id");
-        }
-
         if (ushard_id != -1)
         {
             if (slice.ushard_id() != ushard_id)
@@ -303,11 +288,11 @@ bool impl::load_block(const block_parser& block, slices_t* transaction, int32_t 
 
         auto entry = transaction->item(transaction->push_back());
 
+        entry->id = slice.id();
         entry->ushard_id = slice.ushard_id() % m_ushards.size();
         entry->ref = 0;
         entry->tid = 0;
         entry->size = slice.size();
-        std::memcpy(entry->id, id.data(), sizeof(uuid_t));
 
         if ((slice.flags() & 0x01) == 0) // TODO: add slice flags
         {
@@ -341,7 +326,7 @@ uint64_t impl::commit(slices_t* transaction)
                 auto next_ushard_e = ushard.next(ushard_e);
                 auto ushard_entry = ushard.item(ushard_e);
 
-                if (std::memcmp(entry->id, ushard_entry->id, sizeof(uuid_t)) == 0)
+                if (entry->id == ushard_entry->id)
                 {
                     break;
                 }
@@ -414,6 +399,18 @@ void impl::signal_merge_if_needed(uint16_t ushard_id)
     {
         return;
     }
+
+    // auto e = m_ushards[ushard_id].begin();
+
+    // while (e != slices_t::invalid_handle)
+    // {
+    //     auto next_e = m_ushards[ushard_id].next(e);
+    //     m_ushards[ushard_id].erase(e);
+
+    //     m_slice_count--;
+
+    //     e = next_e;
+    // }
 
     m_merges_requested[ushard_id] = true;
     m_merge_requests.push_back(ushard_id);
