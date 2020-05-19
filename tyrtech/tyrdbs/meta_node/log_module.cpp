@@ -83,7 +83,7 @@ void impl::merge(const merge::request_parser_t& request,
                  net::socket_channel* channel,
                  context* ctx)
 {
-    merge_thread(channel);
+    run_merge_loop(channel);
 
     net::rpc_response<log::merge> response(channel);
     auto message = response.add_message();
@@ -96,6 +96,55 @@ void impl::merge(const merge::request_parser_t& request,
 uint32_t impl::tier_of(uint64_t key_count)
 {
     return ((64 - __builtin_clzll(key_count)) >> 2) - 1;
+}
+
+void impl::run_merge_loop(net::socket_channel* channel)
+{
+    while (true)
+    {
+        while (m_merge_requests.empty() == true)
+        {
+            m_merge_cond.wait();
+
+            if (gt::terminated() == true)
+            {
+                break;
+            }
+        }
+
+        if (gt::terminated() == true)
+        {
+            break;
+        }
+
+        auto tier = m_merge_requests.front();
+        m_merge_requests.pop();
+
+        assert(m_merge_request_filter[tier] == true);
+        m_merge_request_filter[tier] = false;
+
+        m_merge_locks[tier] = true;
+
+        try
+        {
+            merge(channel, tier);
+        }
+        catch (...)
+        {
+            m_merge_locks[tier] = false;
+
+            throw;
+        }
+
+        m_merge_locks[tier] = false;
+    }
+
+    net::rpc_response<log::merge> response(channel);
+    auto message = response.add_message();
+
+    message.add_terminate(1);
+
+    response.send();
 }
 
 void impl::merge(net::socket_channel* channel, uint8_t tier)
@@ -148,51 +197,6 @@ void impl::merge(net::socket_channel* channel, uint8_t tier)
     {
         m_slice_count_cond.signal_all();
     }
-}
-
-void impl::merge_thread(net::socket_channel* channel)
-{
-    while (true)
-    {
-        while (m_merge_requests.empty() == true)
-        {
-            m_merge_cond.wait();
-        }
-
-        if (gt::terminated() == true)
-        {
-            break;
-        }
-
-        auto tier = m_merge_requests.front();
-        m_merge_requests.pop();
-
-        assert(m_merge_request_filter[tier] == true);
-        m_merge_request_filter[tier] = false;
-
-        // if (m_merge_locks[tier] == true)
-        // {
-        //     m_merge_request_filter[tier] = true;
-        //     m_merge_requests.push(tier);
-
-        //     m_merge_cond.signal();
-
-        //     continue;
-        // }
-
-        m_merge_locks[tier] = true;
-
-        merge(channel, tier);
-
-        m_merge_locks[tier] = false;
-    }
-
-    net::rpc_response<log::merge> response(channel);
-    auto message = response.add_message();
-
-    message.add_terminate(1);
-
-    response.send();
 }
 
 void impl::request_merge_if_needed(uint8_t tier)

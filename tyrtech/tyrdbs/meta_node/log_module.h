@@ -94,9 +94,8 @@ private:
 private:
     uint32_t tier_of(uint64_t key_count);
 
+    void run_merge_loop(net::socket_channel* channel);
     void merge(net::socket_channel* channel, uint8_t tier);
-    void merge_thread(net::socket_channel* channel);
-
     void request_merge_if_needed(uint8_t tier);
 
     void print_rate();
