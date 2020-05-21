@@ -56,11 +56,6 @@ uint64_t socket_channel::offset() const
     return m_offset;
 }
 
-void socket_channel::set_offset(uint64_t offset)
-{
-    m_offset = offset;
-}
-
 socket_channel::socket_channel(socket* socket, uint64_t timeout)
   : m_socket(socket)
   , m_timeout(timeout)

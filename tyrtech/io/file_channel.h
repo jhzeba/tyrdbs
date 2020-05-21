@@ -15,7 +15,8 @@ public:
     uint32_t read(char* data, uint32_t size) override;
 
     uint64_t offset() const override;
-    void set_offset(uint64_t offset) override;
+
+    void set_offset(uint64_t offset);
 
 public:
     file_channel(file* file);

@@ -44,15 +44,15 @@ void update_iteration(const std::set<uint64_t>& keys, uint32_t iteration, net::s
         key_count = slice_writer.key_count();
     }
 
-    // net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
-    // auto message = request.add_message();
+    net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
+    auto message = request.add_message();
 
-    // message.set_id(id);
-    // message.set_size(size);
-    // message.set_key_count(key_count);
+    message.set_id(id);
+    message.set_size(size);
+    message.set_key_count(key_count);
 
-    // request.execute();
-    // request.wait();
+    request.execute();
+    request.wait();
 }
 
 void update_thread(const std::string_view& uri,
@@ -83,7 +83,7 @@ void update_thread(const std::string_view& uri,
 
         for (uint32_t j = 0; j < 64; j++)
         {
-            update_iteration(keys, i, &channel);
+            update_iteration(keys, i, nullptr);//&channel);
         }
 
         auto t2 = clock::now();

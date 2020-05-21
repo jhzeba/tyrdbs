@@ -4,6 +4,7 @@ Import('env')
 default_libs = [
     'tyrdbs',
     'net',
+    'storage',
     'io',
     'gt',
     'common',

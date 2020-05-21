@@ -23,11 +23,6 @@ uint64_t socket_channel::offset() const
     assert(false);
 }
 
-void socket_channel::set_offset(uint64_t offset)
-{
-    assert(false);
-}
-
 void socket_channel::flush()
 {
     m_writer.flush();
