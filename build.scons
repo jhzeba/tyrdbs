@@ -6,7 +6,7 @@ env['CXX'] = 'clang++'
 env['AS'] = 'clang'
 env['LINK'] = 'clang++'
 
-env['CCFLAGS'] = '-Wall -pedantic -Wno-unused-function -Wno-gnu-statement-expression'
+env['CCFLAGS'] = '-Wall -pedantic -Wno-unused-function -Wno-gnu-statement-expression -mrdrnd'
 env['CXXFLAGS'] = '-std=c++17'
 env['ASFLAGS'] = '-c'
 env['LINKFLAGS'] = '-pthread -ldl'
