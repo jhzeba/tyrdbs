@@ -186,6 +186,18 @@ void slice::set_tid(uint64_t tid)
     m_tid = tid;
 }
 
+uint64_t slice::new_id()
+{
+    unsigned long long rnd;
+
+    if (__builtin_ia32_rdrand64_step(&rnd) != 1)
+    {
+        throw runtime_error_exception("unable to generate rnd");
+    }
+
+    return rnd;
+}
+
 slice::slice(uint64_t size, io::file&& file)
   : m_cache_id(__cache_id++)
   , m_file(std::move(file))

@@ -4,12 +4,13 @@
         "slice":
         {
             "id": "uint64#",
-            "size": "uint64#",
             "tid": "uint64#",
+            "size": "uint64#",
             "key_count": "uint64#"
         },
         "block":
         {
+	    "flags": "uint8#",
             "slices": ["slice"]
         }
     }

@@ -73,6 +73,12 @@ void read_test(operation op,
 
 int main(int argc, const char* argv[])
 {
+    for (uint32_t i = 0; i < 100000000; i++)
+    {
+        unsigned long long rnd;
+        assert(__builtin_ia32_rdrand64_step(&rnd) == 1);
+    }
+    /*
     cmd_line cmd(argv[0], "Measure I/O subsystem read latencies.", nullptr);
 
     cmd.add_param("operation",
@@ -155,6 +161,7 @@ int main(int argc, const char* argv[])
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 
     auto f = io::file::open(io::file::access::read_only, cmd.get<std::string_view>("file"));
+    */
     /*
     auto stat = f.stat();
 

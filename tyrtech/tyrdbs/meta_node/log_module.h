@@ -3,6 +3,7 @@
 
 #include <gt/condition.h>
 #include <tyrdbs/meta_node/modules.json.h>
+#include <tyrdbs/meta_node/block.json.h>
 
 #include <queue>
 
@@ -46,12 +47,6 @@ public:
                context* ctx);
 
 public:
-    impl(const std::string_view& path, uint32_t max_slices);
-
-private:
-    static constexpr uint32_t max_tiers{32};
-
-private:
     struct slice
     {
         uint64_t id;
@@ -60,12 +55,24 @@ private:
         uint64_t key_count;
     } __attribute__ ((packed));
 
+public:
+    using tier_t =
+            std::vector<slice>;
+
+public:
+    static tier_t recv_tier(net::socket_channel* channel);
+    static void send_tier(const tier_t& tier, bool signal_last_blco, net::socket_channel* channel);
+
+public:
+    impl(const std::string_view& path);
+
+private:
+    static constexpr uint32_t max_tiers{32};
+    static constexpr uint32_t max_slices{512};
+
 private:
     using buffer_t =
             std::array<char, net::socket_channel::buffer_size>;
-
-    using tier_t =
-            std::vector<slice>;
 
     using tiers_t =
             std::vector<tier_t>;
@@ -78,7 +85,6 @@ private:
 
 private:
     uint64_t m_next_tid{1};
-    uint32_t m_max_slices{0};
 
     uint32_t m_slice_count{0};
     gt::condition m_slice_count_cond;
@@ -91,14 +97,19 @@ private:
 
     tiers_t m_tiers;
 
-private:
-    uint32_t tier_of(uint64_t key_count);
+    uint64_t m_merged_keys{0};
+    uint64_t m_merged_size{0};
 
-    void run_merge_loop(net::socket_channel* channel);
-    void merge(net::socket_channel* channel, uint8_t tier);
-    void request_merge_if_needed(uint8_t tier);
+private:
+    uint8_t tier_id_of(uint64_t key_count);
+
+    void merge(net::socket_channel* channel, uint8_t tier_id);
+    void request_merge_if_needed(uint8_t tier_di);
 
     void print_rate();
+
+private:
+    static bool load_block(const block_parser& block, tier_t* tier);
 };
 
 }

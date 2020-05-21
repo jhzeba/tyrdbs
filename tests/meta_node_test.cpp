@@ -4,9 +4,12 @@
 #include <common/logger.h>
 #include <gt/engine.h>
 #include <io/engine.h>
+#include <io/file_channel.h>
 #include <net/rpc_request.h>
 #include <net/uri.h>
+#include <tyrdbs/slice_writer.h>
 #include <tyrdbs/meta_node/service.json.h>
+#include <crc32c.h>
 
 #include <random>
 #include <set>
@@ -17,67 +20,39 @@ using namespace tyrtech;
 
 void update_iteration(const std::set<uint64_t>& keys, uint32_t iteration, net::socket_channel* channel)
 {
-    net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
-    auto message = request.add_message();
+    auto id = tyrdbs::slice::new_id();
 
-    message.set_id(iteration);
-    message.set_size(100);
-    message.set_key_count(1000);
+    uint64_t size{0};
+    uint64_t key_count{0};
 
-    request.execute();
-
-    /*
-    std::array<char, 8192> buffer;
-    message::builder builder(buffer.data(), buffer.size());
-    tyrdbs::meta_node::block_builder block(&builder);
-
-    auto entries = block.add_entries();
-
-    uint32_t ushard_id = 0;
-
-    for (auto& key : keys)
     {
-        uint64_t _key = __builtin_bswap64(key + iteration);
-        std::string_view key_str(reinterpret_cast<const char*>(&_key), sizeof(_key));
+        auto file = io::file::create("data/{:016x}.dat", id);
+        auto file_channel = io::file_channel(&file);
+        auto slice_writer = tyrdbs::slice_writer(&file_channel);
 
-        uint16_t bytes_required = 0;
-
-        bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
-        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
-        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
-        bytes_required += key_str.size();
-        bytes_required += key_str.size();
-
-        if (builder.available_space() <= bytes_required)
+        for (auto& key : keys)
         {
-            entries.finalize();
-            block.finalize();
+            uint64_t _key = __builtin_bswap64(key + iteration);
+            std::string_view key_str(reinterpret_cast<const char*>(&_key), sizeof(_key));
 
-            channel->write(buffer.data(), builder.size());
-
-            builder = message::builder(buffer.data(), buffer.size());
-            block = tyrdbs::meta_node::block_builder(&builder);
-
-            entries = block.add_entries();
+            slice_writer.add(key_str, key_str, true, false);
         }
 
-        auto entry = entries.add_value();
+        slice_writer.flush();
+        size = slice_writer.commit();
 
-        entry.set_flags(0x01);
-        entry.set_ushard_id(ushard_id++);
-        entry.add_key(key_str);
-        entry.add_value(key_str);
+        key_count = slice_writer.key_count();
     }
 
-    block.set_flags(1);
+    // net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
+    // auto message = request.add_message();
 
-    entries.finalize();
-    block.finalize();
+    // message.set_id(id);
+    // message.set_size(size);
+    // message.set_key_count(key_count);
 
-    channel->write(buffer.data(), builder.size());
-    */
-
-    request.wait();
+    // request.execute();
+    // request.wait();
 }
 
 void update_thread(const std::string_view& uri,
@@ -106,7 +81,10 @@ void update_thread(const std::string_view& uri,
     {
         auto t1 = clock::now();
 
-        update_iteration(keys, i, &channel);
+        for (uint32_t j = 0; j < 64; j++)
+        {
+            update_iteration(keys, i, &channel);
+        }
 
         auto t2 = clock::now();
 
@@ -117,7 +95,7 @@ void update_thread(const std::string_view& uri,
         {
             last_print = total_t;
 
-            logger::notice("#{}: transaction commited in {:.2f} ms, {:.2f} transactions/s, {:.2f} keys/s",
+            logger::notice("#{}: transaction commited in {:.2f} s, {:.2f} transactions/s, {:.2f} keys/s",
                            i,
                            iter_t / 1000000.,
                            (i + 1) * 1000000000. / total_t,
@@ -159,6 +137,13 @@ int main(int argc, const char* argv[])
                   "num",
                   "0",
                   {"pseudo random seed to use (default is 0)"});
+
+    cmd.add_param("storage-queue-depth",
+                  nullptr,
+                  "storage-queue-depth",
+                  "num",
+                  "128",
+                  {"storage queue depth to use (default is 128)"});
 
     cmd.add_param("network-queue-depth",
                   nullptr,
@@ -210,8 +195,14 @@ int main(int argc, const char* argv[])
 
     set_cpu(cmd.get<uint32_t>("cpu"));
 
+    if (crc32c_initialize() == false)
+    {
+        throw runtime_error_exception("crc32c instruction not supported!");
+    }
+
     gt::initialize();
     io::initialize(4096);
+    io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
     io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
     FILE* stats_fd = nullptr;

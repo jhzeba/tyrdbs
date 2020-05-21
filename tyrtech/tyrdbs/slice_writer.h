@@ -26,6 +26,8 @@ public:
     void flush();
     uint64_t commit();
 
+    uint64_t key_count();
+
 public:
     slice_writer(io::channel* channel);
 

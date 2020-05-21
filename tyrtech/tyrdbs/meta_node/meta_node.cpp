@@ -4,10 +4,36 @@
 #include <gt/engine.h>
 #include <io/engine.h>
 #include <io/socket.h>
-#include <tyrdbs/meta_node/service.h>
+#include <net/rpc_server.h>
+#include <net/uri.h>
+#include <tyrdbs/meta_node/service.json.h>
+#include <tyrdbs/meta_node/log_module.h>
 
 
 using namespace tyrtech;
+
+
+using service_t =
+        tyrdbs::meta_node::service<tyrdbs::meta_node::log::impl>;
+
+using server_t =
+        net::rpc_server<service_t>;
+
+
+void service_thread(const std::string_view& uri)
+{
+    auto ch = net::uri::listen(uri);
+
+    tyrdbs::meta_node::log::impl impl("data");
+    service_t service(&impl);
+
+    server_t server(ch, &service);
+
+    while (gt::terminated() == false)
+    {
+        gt::sleep(100);
+    }
+}
 
 
 int main(int argc, const char* argv[])
@@ -57,9 +83,7 @@ int main(int argc, const char* argv[])
         io::initialize(cmd.get<uint32_t>("iouring-queue-depth"));
         io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
 
-        gt::create_thread(tyrdbs::meta_node::service_thread,
-                          cmd.get<std::string_view>("uri"),
-                          cmd.get<uint32_t>("max-slices"));
+        gt::create_thread(service_thread, cmd.get<std::string_view>("uri"));
 
         gt::run();
     }

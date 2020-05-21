@@ -185,6 +185,11 @@ uint64_t slice_writer::commit()
     return m_writer.offset();
 }
 
+uint64_t slice_writer::key_count()
+{
+    return m_header.stats.key_count;
+}
+
 bool slice_writer::check(const std::string_view& key,
                          const std::string_view& value,
                          bool eor,

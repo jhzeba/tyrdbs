@@ -15,13 +15,13 @@ default_libs = [
 env.Program('meta_node',
             source=[
                 'meta_node.cpp',
-                'log_module.cpp',
-                'service.cpp'
+                'log_module.cpp'
             ],
             LIBS=default_libs)
 
 env.Program('meta_merge',
             source=[
-                'meta_merge.cpp'
+                'meta_merge.cpp',
+                'log_module.cpp'
             ],
             LIBS=default_libs)

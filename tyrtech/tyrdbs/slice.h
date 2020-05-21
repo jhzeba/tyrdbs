@@ -36,7 +36,7 @@ public:
     void set_tid(uint64_t tid);
 
 public:
-    static uint64_t count();
+    static uint64_t new_id();
 
 public:
     template<typename... Arguments>
