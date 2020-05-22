@@ -25,7 +25,7 @@ public:
 
         for (auto&& remote : m_remotes)
         {
-            remote->disconnect();
+            remote->socket()->disconnect();
         }
     }
 
@@ -47,7 +47,7 @@ private:
             std::shared_ptr<io::socket>;
 
     using remotes_t =
-            std::unordered_set<socket_ptr>;
+            std::unordered_set<socket_channel*>;
 
     using buffer_t =
             std::array<char, socket_channel::buffer_size>;
@@ -88,13 +88,13 @@ private:
     {
         socket_channel channel(std::move(remote), 0);
 
-        logger::debug("{}: connected", channel.uri());
+        logger::debug("{}: connected", channel.socket()->uri());
 
-        m_remotes.insert(channel.remote());
+        m_remotes.insert(&channel);
 
         try
         {
-            auto ctx = m_service->create_context(channel.remote());
+            auto ctx = m_service->create_context(&channel);
 
             while (true)
             {
@@ -105,7 +105,8 @@ private:
 
                 if (unlikely(*request_size > socket_channel::buffer_size - sizeof(uint16_t)))
                 {
-                    logger::error("{}: request too big, disconnecting...", channel.uri());
+                    logger::error("{}: request too big, disconnecting...",
+                                  channel.socket()->uri());
 
                     break;
                 }
@@ -118,11 +119,11 @@ private:
 
                 try
                 {
-                    m_service->process_message(request, &channel, &ctx);
+                    m_service->process_message(request, &ctx);
                 }
                 catch (server_error_exception& e)
                 {
-                    logger::error("{}: {}", channel.uri(), e.what());
+                    logger::error("{}: {}", channel.socket()->uri(), e.what());
 
                     rpc_response<std::void_t<>> response(&channel);
 
@@ -139,14 +140,14 @@ private:
         }
         catch (io::socket::disconnected_exception&)
         {
-            logger::debug("{}: disconnected", channel.uri());
+            logger::debug("{}: disconnected", channel.socket()->uri());
         }
         catch (message::malformed_message_exception&)
         {
-            logger::error("{}: invalid message, disconnecting...", channel.uri());
+            logger::error("{}: invalid message, disconnecting...", channel.socket()->uri());
         }
 
-        m_remotes.erase(channel.remote());
+        m_remotes.erase(&channel);
     }
 };
 

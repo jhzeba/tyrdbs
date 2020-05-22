@@ -20,17 +20,17 @@ struct engine : private disallow_copy, disallow_move
     uint32_t size() const;
     std::string_view path() const;
 
-    engine(io::file file,
+    engine(io::file* file,
            uint32_t cache_bits,
            uint32_t write_cache_bits,
            bool preallocate_space);
 };
 
-engine::engine(io::file file,
+engine::engine(io::file* file,
                uint32_t cache_bits,
                uint32_t write_cache_bits,
                bool preallocate_space)
-  : disk(std::move(file), preallocate_space)
+  : disk(file, preallocate_space)
   , cache(cache_bits)
   , disk_reader(&disk, &cache)
   , disk_writer(&disk, &cache, write_cache_bits)
@@ -43,12 +43,12 @@ engine::engine(io::file file,
 thread_local std::unique_ptr<engine> __engine;
 
 
-void initialize(io::file file,
+void initialize(io::file* file,
                 uint32_t cache_bits,
                 uint32_t write_cache_bits,
                 bool preallocate_space)
 {
-    __engine = std::make_unique<engine>(std::move(file),
+    __engine = std::make_unique<engine>(file,
                                         cache_bits,
                                         write_cache_bits,
                                         preallocate_space);

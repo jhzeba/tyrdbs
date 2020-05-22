@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include <net/socket_channel.h>
 #include <net/server_exception.h>
+#include <net/socket_channel.h>
 #include <net/service.json.h>
 
 
@@ -353,7 +353,6 @@ struct module : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::socket_channel* channel,
                          typename Implementation::context* ctx)
     {
         switch (service_request.function())
@@ -366,7 +365,7 @@ struct module : private tyrtech::disallow_copy
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->func1(request, channel, ctx);
+                impl->func1(request, ctx);
 
                 break;
             }
@@ -378,7 +377,7 @@ struct module : private tyrtech::disallow_copy
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->func2(request, channel, ctx);
+                impl->func2(request, ctx);
 
                 break;
             }
@@ -389,9 +388,9 @@ struct module : private tyrtech::disallow_copy
         }
     }
 
-    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
+    decltype(auto) create_context(tyrtech::net::socket_channel* channel)
     {
-        return impl->create_context(remote);
+        return impl->create_context(channel);
     }
 };
 
@@ -743,7 +742,6 @@ struct module : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::socket_channel* channel,
                          typename Implementation::context* ctx)
     {
         switch (service_request.function())
@@ -756,7 +754,7 @@ struct module : private tyrtech::disallow_copy
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->func1(request, channel, ctx);
+                impl->func1(request, ctx);
 
                 break;
             }
@@ -768,7 +766,7 @@ struct module : private tyrtech::disallow_copy
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->func2(request, channel, ctx);
+                impl->func2(request, ctx);
 
                 break;
             }
@@ -779,9 +777,9 @@ struct module : private tyrtech::disallow_copy
         }
     }
 
-    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
+    decltype(auto) create_context(tyrtech::net::socket_channel* channel)
     {
-        return impl->create_context(remote);
+        return impl->create_context(channel);
     }
 };
 

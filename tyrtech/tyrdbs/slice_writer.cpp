@@ -170,7 +170,7 @@ void slice_writer::flush()
     m_writer.flush();
 }
 
-slice_writer::slice_writer(io::channel* channel)
+slice_writer::slice_writer(io::file_channel* channel)
   : m_writer(&m_buffer, channel)
 {
 }

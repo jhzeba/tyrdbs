@@ -2,7 +2,7 @@
 
 
 #include <common/buffered_writer.h>
-#include <io/channel.h>
+#include <io/file_channel.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/node_writer.h>
 #include <tyrdbs/key_buffer.h>
@@ -29,7 +29,7 @@ public:
     uint64_t key_count();
 
 public:
-    slice_writer(io::channel* channel);
+    slice_writer(io::file_channel* channel);
 
 private:
     class index_writer : private disallow_copy, disallow_move
@@ -64,7 +64,7 @@ private:
             std::array<char, node::page_size>;
 
     using writer_t =
-            buffered_writer<buffer_t, io::channel>;
+            buffered_writer<buffer_t, io::file_channel>;
 
 private:
     key_buffer m_first_key;

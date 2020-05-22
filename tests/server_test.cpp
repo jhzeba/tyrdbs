@@ -21,20 +21,24 @@ struct impl : private disallow_copy
 {
     struct context : private disallow_copy
     {
+        net::socket_channel* channel{nullptr};
+
+        context(net::socket_channel* channel)
+          : channel(channel)
+        {
+        }
     };
 
-    context create_context(const std::shared_ptr<io::socket>& remote)
+    context create_context(net::socket_channel* channel)
     {
-        return context();
+        return context(channel);
     }
 
-    void func1(const func1::request_parser_t& request,
-               net::socket_channel* channel,
-               context* ctx)
+    void func1(const func1::request_parser_t& request, context* ctx)
     {
         logger::debug("module1::func1 request: {} {}", request.param1(), request.param2());
 
-        net::rpc_response<tests::module1::func1> response(channel);
+        net::rpc_response<tests::module1::func1> response(ctx->channel);
         auto message = response.add_message();
 
         message.add_param1(request.param1());
@@ -43,13 +47,11 @@ struct impl : private disallow_copy
         response.send();
     }
 
-    void func2(const func2::request_parser_t& request,
-               net::socket_channel* channel,
-               context* ctx)
+    void func2(const func2::request_parser_t& request, context* ctx)
     {
         logger::debug("module1::func2 request: {} {}", request.param1(), request.param2());
 
-        net::rpc_response<tests::module1::func2> response(channel);
+        net::rpc_response<tests::module1::func2> response(ctx->channel);
         auto message = response.add_message();
 
         message.add_param1(request.param1());
@@ -71,20 +73,24 @@ struct impl : private disallow_copy
 {
     struct context : private disallow_copy
     {
+        net::socket_channel* channel{nullptr};
+
+        context(net::socket_channel* channel)
+          : channel(channel)
+        {
+        }
     };
 
-    context create_context(const std::shared_ptr<io::socket>& remote)
+    context create_context(net::socket_channel* channel)
     {
-        return context();
+        return context(channel);
     }
 
-    void func1(const func1::request_parser_t& request,
-               net::socket_channel* channel,
-               context* ctx)
+    void func1(const func1::request_parser_t& request, context* ctx)
     {
         logger::debug("module2::func1 request: {} {}", request.param1(), request.param2());
 
-        net::rpc_response<tests::module2::func1> response(channel);
+        net::rpc_response<tests::module2::func1> response(ctx->channel);
         auto message = response.add_message();
 
         message.add_param1(request.param1());
@@ -93,13 +99,11 @@ struct impl : private disallow_copy
         response.send();
     }
 
-    void func2(const func2::request_parser_t& request,
-               net::socket_channel* channel,
-               context* ctx)
+    void func2(const func2::request_parser_t& request, context* ctx)
     {
         logger::debug("module2::func2 request: {} {}", request.param1(), request.param2());
 
-        net::rpc_response<tests::module2::func2> response(channel);
+        net::rpc_response<tests::module2::func2> response(ctx->channel);
         auto message = response.add_message();
 
         message.add_param1(request.param1());

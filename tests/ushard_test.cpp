@@ -9,10 +9,9 @@
 #include <tyrdbs/cache.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/overwrite_iterator.h>
+#include <crc32c.h>
 
 #include <tests/stats.h>
-
-#include <crc32c.h>
 
 
 using namespace tyrtech;
@@ -44,10 +43,7 @@ struct thread_data
     thread_data(uint32_t thread_id)
       : thread_id(thread_id)
     {
-        for (uint32_t i = 0; i < 16; i++)
-        {
-            ushard.emplace_back(tyrdbs::slices_t());
-        }
+        ushard.resize(32);
     }
 };
 
@@ -512,6 +508,13 @@ int main(int argc, const char* argv[])
                   "file",
                   "test.data",
                   {"test data file (default test.data)"});
+
+    cmd.add_param("storage-file",
+                  nullptr,
+                  "storage-file",
+                  "file",
+                  "storage.dat",
+                  {"storage file to use (default storage.dat)"});
 
     cmd.parse(argc, argv);
 

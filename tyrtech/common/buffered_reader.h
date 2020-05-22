@@ -51,18 +51,6 @@ public:
         read(reinterpret_cast<char*>(data), sizeof(T));
     }
 
-    template<typename T = SourceType>
-    uint64_t offset(typename std::enable_if<!std::is_void<T>::value, bool>::type has_sink = true) const
-    {
-        return m_offset + m_source->offset();
-    }
-
-    template<typename T = SourceType>
-    uint64_t offset(typename std::enable_if<std::is_void<T>::value, bool>::type has_sink = false) const
-    {
-        return m_offset;
-    }
-
 public:
     buffered_reader(BufferType* buffer, SourceType* source = nullptr) noexcept
       : m_buffer(buffer)

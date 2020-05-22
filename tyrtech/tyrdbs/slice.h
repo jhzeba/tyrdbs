@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <io/file.h>
+#include <io/file_channel.h>
 #include <tyrdbs/node.h>
 #include <tyrdbs/attributes.h>
 #include <tyrdbs/iterator.h>
@@ -26,7 +26,8 @@ public:
     } __attribute__ ((packed));
 
 public:
-    std::unique_ptr<iterator> range(const std::string_view& min_key, const std::string_view& max_key);
+    std::unique_ptr<iterator> range(const std::string_view& min_key,
+                                    const std::string_view& max_key);
     std::unique_ptr<iterator> begin();
 
     void unlink();
@@ -39,12 +40,7 @@ public:
     static uint64_t new_id();
 
 public:
-    template<typename... Arguments>
-    slice(uint64_t size, Arguments&&... arguments)
-      : slice(size, io::file::open(io::file::access::read_only,
-                                   std::forward<Arguments>(arguments)...))
-    {
-    }
+    slice(uint64_t size, io::file_channel* channel);
 
     slice() = default;
     ~slice();
@@ -64,7 +60,7 @@ public:
 private:
     uint64_t m_cache_id{static_cast<uint64_t>(-1)};
 
-    io::file m_file;
+    io::file_channel* m_channel{nullptr};
 
     uint64_t m_key_count{0};
 
@@ -74,9 +70,6 @@ private:
     uint64_t m_tid{0};
 
     bool m_unlink{false};
-
-private:
-    slice(uint64_t size, io::file&& file);
 
 private:
     uint64_t find_node_for(uint64_t location,

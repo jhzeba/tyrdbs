@@ -22,20 +22,24 @@ struct impl : private disallow_copy
 {
     struct context : private disallow_copy
     {
+        net::socket_channel* channel{nullptr};
+
+        context(net::socket_channel* channel)
+          : channel(channel)
+        {
+        }
     };
 
     uint64_t requests{0};
 
-    context create_context(const std::shared_ptr<io::socket>& remote)
+    context create_context(net::socket_channel* channel)
     {
-        return context();
+        return context(channel);
     }
 
-    void ping(const ping::request_parser_t& request,
-              net::socket_channel* channel,
-              context* ctx)
+    void ping(const ping::request_parser_t& request, context* ctx)
     {
-        net::rpc_response<tests::ping::ping> response(channel);
+        net::rpc_response<tests::ping::ping> response(ctx->channel);
 
         auto message = response.add_message();
         message.add_sequence(request.sequence());

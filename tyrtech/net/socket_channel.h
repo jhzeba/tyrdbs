@@ -9,16 +9,14 @@
 namespace tyrtech::net {
 
 
-class socket_channel : public io::channel
+class socket_channel
 {
 public:
     static constexpr uint32_t buffer_size{8192};
 
 public:
-    uint32_t write(const char* data, uint32_t size) override;
-    uint32_t read(char* data, uint32_t size) override;
-
-    uint64_t offset() const override;
+    uint32_t write(const char* data, uint32_t size);
+    uint32_t read(char* data, uint32_t size);
 
     void flush();
 
@@ -28,8 +26,7 @@ public:
         read(reinterpret_cast<char*>(data), sizeof(T));
     }
 
-    std::string_view uri() const;
-    const std::shared_ptr<io::socket>& remote();
+    const std::shared_ptr<io::socket>& socket();
 
 public:
     socket_channel(std::shared_ptr<io::socket> socket, uint64_t timeout);

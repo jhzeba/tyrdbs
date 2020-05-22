@@ -62,34 +62,59 @@ uint32_t file::pwrite(uint64_t offset, const char* data, uint32_t size) const
     return static_cast<uint32_t>(res);
 }
 
-/*
+uint32_t file::preadv(uint64_t offset, iovec* iov, uint32_t size)
+{
+    queue_flow::resource r(*__queue_flow);
+
+    auto res = io::preadv(m_fd, iov, size, offset);
+
+    if (unlikely(res == -1))
+    {
+        throw exception("{}: {}", m_path, system_error().message);
+    }
+
+    return static_cast<uint32_t>(res);
+}
+
+uint32_t file::pwritev(uint64_t offset, iovec* iov, uint32_t size)
+{
+    queue_flow::resource r(*__queue_flow);
+
+    auto res = io::pwritev(m_fd, iov, size, offset);
+
+    if (unlikely(res == -1))
+    {
+        throw exception("{}: {}", m_path, system_error().message);
+    }
+
+    return static_cast<uint32_t>(res);
+}
+
+
+void file::allocate(int32_t mode, uint64_t offset, uint64_t size)
+{
+    queue_flow::resource r(*__queue_flow);
+
+    auto res = io::allocate(m_fd, mode, offset, size);
+
+    if (unlikely(res == -1))
+    {
+        throw exception("{}: {}", m_path, system_error().message);
+    }
+}
+
 struct stat64 file::stat()
 {
     struct stat64 stat;
 
     if (auto res = ::fstat64(m_fd, &stat); unlikely(res == -1))
     {
-        throw error("{}: {}", m_path, system_error().message);
+        throw exception("{}: {}", m_path, system_error().message);
     }
 
     return stat;
 }
 
-bool file::try_lock()
-{
-    if (auto res = ::flock(m_fd, LOCK_NB | LOCK_EX); unlikely(res == -1))
-    {
-        if (auto e = system_error(); e.code != EWOULDBLOCK)
-        {
-            throw error("{}: {}", m_path, e.message);
-        }
-
-        return false;
-    }
-
-    return true;
-}
-*/
 void file::unlink()
 {
     if (auto res = ::unlink(m_path); unlikely(res == -1))

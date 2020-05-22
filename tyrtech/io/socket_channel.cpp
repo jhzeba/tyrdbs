@@ -38,22 +38,12 @@ uint32_t socket_channel::write(const char* data, uint32_t size)
         size -= res;
     }
 
-    m_offset += orig_size;
-
     return orig_size;
 }
 
 uint32_t socket_channel::read(char* data, uint32_t size)
 {
-    size = m_socket->recv(data, size, m_timeout);
-    m_offset += size;
-
-    return size;
-}
-
-uint64_t socket_channel::offset() const
-{
-    return m_offset;
+    return m_socket->recv(data, size, m_timeout);
 }
 
 socket_channel::socket_channel(socket* socket, uint64_t timeout)

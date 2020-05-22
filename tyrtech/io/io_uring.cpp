@@ -296,6 +296,18 @@ int32_t close(int32_t fd)
     return wait_for(&request);
 }
 
+int32_t allocate(int32_t fd, int32_t mode, uint64_t offset, uint64_t size)
+{
+    io_uring::request request;
+    io_uring_sqe* sqe = get_sqe();
+
+    io_uring_prep_fallocate(sqe, fd, mode, offset, size);
+    io_uring_sqe_set_data(sqe, &request);
+    io_uring_sqe_set_flags(sqe, IOSQE_ASYNC);
+
+    return wait_for(&request);
+}
+
 int32_t sync(int32_t fd, uint32_t flags)
 {
     io_uring::request request;

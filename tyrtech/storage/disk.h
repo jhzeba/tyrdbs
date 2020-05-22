@@ -16,19 +16,6 @@ public:
     DEFINE_EXCEPTION(io::file::exception, exception);
 
 public:
-    template<typename... Arguments>
-    static decltype(auto) create(Arguments&&... arguments)
-    {
-        return std::make_shared<disk>(io::file::create(std::forward<Arguments>(arguments)...));
-    }
-
-    template<typename... Arguments>
-    static decltype(auto) open(Arguments&&... arguments)
-    {
-        return std::make_shared<disk>(io::file::open(std::forward<Arguments>(arguments)...));
-    }
-
-public:
     void read(uint32_t page, char* buff);
     uint32_t write(uint32_t page, iovec* iovec, uint32_t size);
 
@@ -45,10 +32,10 @@ public:
     uint64_t new_cache_id();
 
 public:
-    disk(io::file file, bool preallocate_space);
+    disk(io::file* file, bool preallocate_space);
 
 private:
-    io::file m_file;
+    io::file* m_file;
 
     gt::condition m_allocation_cond;
     bool m_allocation_in_progress{false};

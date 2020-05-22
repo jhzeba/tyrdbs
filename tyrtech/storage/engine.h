@@ -8,7 +8,7 @@
 namespace tyrtech::storage {
 
 
-void initialize(io::file file,
+void initialize(io::file* file,
                 uint32_t cache_bits,
                 uint32_t write_cache_bits,
                 bool preallocate_space);

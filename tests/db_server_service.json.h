@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include <io/channel.h>
 #include <net/server_exception.h>
+#include <net/socket_channel.h>
 #include <net/service.json.h>
 
 #include <tests/db_server_module.json.h>
@@ -37,22 +37,20 @@ struct db_server_service : private tyrtech::disallow_copy
         }
     };
 
-    context create_context(const std::shared_ptr<tyrtech::io::channel>& remote)
+    context create_context(tyrtech::net::socket_channel* channel)
     {
         return context(
-            collections.create_context(remote)
+            collections.create_context(channel)
         );
     }
 
-    void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::service::response_builder* service_response,
-                         context* ctx)
+    void process_message(const tyrtech::net::service::request_parser& service_request, context* ctx)
     {
         switch (service_request.module())
         {
             case collections::id:
             {
-                collections.process_message(service_request, service_response, &ctx->collections_ctx);
+                collections.process_message(service_request, &ctx->collections_ctx);
 
                 break;
             }

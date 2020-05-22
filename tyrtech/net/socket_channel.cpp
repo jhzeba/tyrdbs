@@ -18,22 +18,12 @@ uint32_t socket_channel::read(char* data, uint32_t size)
     return size;
 }
 
-uint64_t socket_channel::offset() const
-{
-    assert(false);
-}
-
 void socket_channel::flush()
 {
     m_writer.flush();
 }
 
-std::string_view socket_channel::uri() const
-{
-    return m_socket->uri();
-}
-
-const std::shared_ptr<io::socket>& socket_channel::remote()
+const std::shared_ptr<io::socket>& socket_channel::socket()
 {
     return m_socket;
 }

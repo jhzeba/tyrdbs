@@ -563,7 +563,6 @@ struct module : private tyrtech::disallow_copy
     }
 
     void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::socket_channel* channel,
                          typename Implementation::context* ctx)
     {
         switch (service_request.function())
@@ -577,7 +576,7 @@ struct module : private tyrtech::disallow_copy
                 request_parser_t request(service_request.get_parser(),
                                          service_request.message());
 
-                impl->{{func.name}}(request, channel, ctx);
+                impl->{{func.name}}(request, ctx);
 
                 break;
             }
@@ -589,9 +588,9 @@ struct module : private tyrtech::disallow_copy
         }
     }
 
-    decltype(auto) create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
+    decltype(auto) create_context(tyrtech::net::socket_channel* channel)
     {
-        return impl->create_context(remote);
+        return impl->create_context(channel);
     }
 };
 
@@ -645,8 +644,8 @@ def modules_generator(data, output):
     modules_template = '''#pragma once
 
 
-#include <net/socket_channel.h>
 #include <net/server_exception.h>
+#include <net/socket_channel.h>
 #include <net/service.json.h>
 
 {% for module in modules %}
@@ -670,8 +669,8 @@ def services_generator(data, output):
     services_template = '''#pragma once
 
 
-#include <net/socket_channel.h>
 #include <net/server_exception.h>
+#include <net/socket_channel.h>
 #include <net/service.json.h>
 
 {% for include in includes %}
@@ -727,26 +726,24 @@ struct {{service.name}} : private tyrtech::disallow_copy
         }
     };
 
-    context create_context(const std::shared_ptr<tyrtech::io::socket>& remote)
+    context create_context(tyrtech::net::socket_channel* channel)
     {
         return context(
 {% for module in service.modules %}
-            {{module}}.create_context(remote){% if not loop.last %},{% endif %}
+            {{module}}.create_context(channel){% if not loop.last %},{% endif %}
 
 {% endfor %}
         );
     }
 
-    void process_message(const tyrtech::net::service::request_parser& service_request,
-                         tyrtech::net::socket_channel* channel,
-                         context* ctx)
+    void process_message(const tyrtech::net::service::request_parser& service_request, context* ctx)
     {
         switch (service_request.module())
         {
 {% for module in service.modules %}
             case {{module}}::id:
             {
-                {{module}}.process_message(service_request, channel, &ctx->{{module}}_ctx);
+                {{module}}.process_message(service_request, &ctx->{{module}}_ctx);
 
                 break;
             }

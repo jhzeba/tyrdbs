@@ -75,9 +75,12 @@ public:
     uint32_t pread(uint64_t offset, char* data, uint32_t size) const;
     uint32_t pwrite(uint64_t offset, const char* data, uint32_t size) const;
 
-    //struct stat64 stat();
-    //bool try_lock();
+    uint32_t preadv(uint64_t offset, iovec* iov, uint32_t size);
+    uint32_t pwritev(uint64_t offset, iovec* iov, uint32_t size);
 
+    void allocate(int32_t mode, uint64_t offset, uint64_t size);
+
+    struct stat64 stat();
     void unlink();
 
     std::string_view path() const;

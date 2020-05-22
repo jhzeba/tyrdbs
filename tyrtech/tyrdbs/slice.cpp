@@ -1,4 +1,5 @@
 #include <common/branch_prediction.h>
+#include <common/exception.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/location.h>
@@ -198,15 +199,15 @@ uint64_t slice::new_id()
     return rnd;
 }
 
-slice::slice(uint64_t size, io::file&& file)
+slice::slice(uint64_t size, io::file_channel* channel)
   : m_cache_id(__cache_id++)
-  , m_file(std::move(file))
+  , m_channel(channel)
 {
     header h;
 
-    m_file.pread(size - sizeof(h),
-                 reinterpret_cast<char*>(&h),
-                 sizeof(h));
+    m_channel->pread(size - sizeof(h),
+                     reinterpret_cast<char*>(&h),
+                     sizeof(h));
 
     if (h.signature != signature)
     {
@@ -223,13 +224,13 @@ slice::~slice()
 {
     if (m_unlink == true)
     {
-        m_file.unlink();
+        // m_channel->unlink();
     }
 }
 
 cache::node_ptr slice::load(uint64_t location) const
 {
-    return cache::get(m_file, m_cache_id, location);
+    return cache::get(m_channel, m_cache_id, location);
 }
 
 uint64_t slice::find_node_for(uint64_t location,

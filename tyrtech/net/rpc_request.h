@@ -36,7 +36,7 @@ public:
         if (unlikely(*size > socket_channel::buffer_size - sizeof(uint16_t)))
         {
             throw runtime_error_exception("{}: response message too big",
-                                          m_channel->uri());
+                                          m_channel->socket()->uri());
         }
 
         m_channel->read(m_buffer.data() + sizeof(uint16_t), *size);
