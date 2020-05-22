@@ -1,7 +1,7 @@
 #pragma once
 
 
-#include <io/file_channel.h>
+#include <tyrdbs/reader.h>
 #include <tyrdbs/node.h>
 #include <tyrdbs/attributes.h>
 #include <tyrdbs/iterator.h>
@@ -37,10 +37,7 @@ public:
     void set_tid(uint64_t tid);
 
 public:
-    static uint64_t new_id();
-
-public:
-    slice(uint64_t size, io::file_channel* channel);
+    slice(uint64_t size, std::shared_ptr<reader> reader);
 
     slice() = default;
     ~slice();
@@ -58,9 +55,13 @@ public:
     } __attribute__ ((packed));
 
 private:
+    using reader_ptr =
+            std::shared_ptr<reader>;
+
+private:
     uint64_t m_cache_id{static_cast<uint64_t>(-1)};
 
-    io::file_channel* m_channel{nullptr};
+    reader_ptr m_reader;
 
     uint64_t m_key_count{0};
 

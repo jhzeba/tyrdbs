@@ -4,6 +4,8 @@ Import('BUILD_DIR')
 
 net_sources = [
     'socket_channel.cpp',
+    'socket_reader.cpp',
+    'socket_writer.cpp',
     'uri.cpp'
 ]
 

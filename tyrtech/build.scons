@@ -13,7 +13,6 @@ scripts = [
     'gt/build.scons',
     'net/build.scons',
     'io/build.scons',
-    'storage/build.scons',
     'message/build.scons',
     'tyrdbs/build.scons'
 ]

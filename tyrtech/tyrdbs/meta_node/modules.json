@@ -20,26 +20,12 @@
                 "id": 2,
                 "request":
                 {
-		    "id": "uint64#",
-		    "size": "uint64#",
-		    "key_count": "uint64#"
                 },
                 "response":
                 {
                     "tid": "uint64#"
                 }
-            },
-	    "merge":
-	    {
-		"id": 3,
-		"request":
-		{
-		},
-		"response":
-		{
-		    "terminate": "uint8"
-		}
-	    }
+            }
         }
     }
 }

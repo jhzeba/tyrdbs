@@ -144,13 +144,13 @@ void slice_writer::flush()
 {
     assert(likely(m_commited == false));
 
-    // if (m_last_eor == false)
-    // {
-    //     throw invalid_data_exception("data not complete");
-    // }
+    if (m_last_eor == false)
+    {
+        throw invalid_data_exception("data not complete");
+    }
 
     uint64_t location = store(&m_node, true);
-    m_writer.write(location::invalid_size);
+    m_writer->write(location::invalid_size);
 
     auto last_data_node = m_last_node;
 
@@ -164,25 +164,36 @@ void slice_writer::flush()
     last_data_node->set_next(location::invalid_size);
     m_last_node->set_next(location::invalid_size);
 
-    m_writer.write(location::invalid_size);
-    m_writer.write(m_header);
+    m_writer->write(location::invalid_size);
+    m_writer->write(m_header);
 
-    m_writer.flush();
+    m_writer->flush();
 }
 
-slice_writer::slice_writer(io::file_channel* channel)
-  : m_writer(&m_buffer, channel)
+slice_writer::slice_writer(std::shared_ptr<tyrdbs::writer> writer)
+  : m_writer(std::move(writer))
 {
 }
 
-uint64_t slice_writer::commit()
+slice_writer::~slice_writer()
+{
+    if (m_commited == false)
+    {
+        m_writer->unlink();
+    }
+}
+
+void slice_writer::commit()
 {
     assert(likely(m_header.root != static_cast<uint64_t>(-1)));
 
     assert(likely(m_commited == false));
     m_commited = true;
+}
 
-    return m_writer.offset();
+tyrdbs::writer* slice_writer::writer()
+{
+    return m_writer.get();
 }
 
 uint64_t slice_writer::key_count()
@@ -244,6 +255,9 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
 {
     assert(likely(m_commited == false));
 
+    using buffer_t =
+            std::array<char, node::page_size>;
+
     buffer_t buffer;
 
     uint32_t size = node->flush(buffer.data(), buffer.size());
@@ -251,7 +265,7 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
 
     if (m_header.first_node_size != location::invalid_size)
     {
-        m_writer.write(location::size(size, is_leaf));
+        m_writer->write(location::size(size, is_leaf));
     }
     else
     {
@@ -259,10 +273,10 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
         m_header.first_node_size = location::size(size, is_leaf);
     }
 
-    uint64_t location = location::location(m_writer.offset(), size, is_leaf);
+    uint64_t location = location::location(m_writer->offset(), size, is_leaf);
 
-    m_writer.write(crc32c_update(0, buffer.data(), size));
-    m_writer.write(buffer.data(), size);
+    m_writer->write(crc32c_update(0, buffer.data(), size));
+    m_writer->write(buffer.data(), size);
 
     if (m_last_node != nullptr)
     {

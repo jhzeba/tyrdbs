@@ -4,7 +4,6 @@ Import('env')
 default_libs = [
     'tyrdbs',
     'net',
-    'storage',
     'io',
     'gt',
     'common',
@@ -13,18 +12,10 @@ default_libs = [
     'uuid'
 ]
 
-"""
 env.Program('meta_node',
             source=[
                 'meta_node.cpp',
-                'log_module.cpp'
+                'log_module.cpp',
+                'ushard.cpp'
             ],
             LIBS=default_libs)
-
-env.Program('meta_merge',
-            source=[
-                'meta_merge.cpp',
-                'log_module.cpp'
-            ],
-            LIBS=default_libs)
-"""

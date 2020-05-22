@@ -9,6 +9,7 @@ common_sources = [
     'cmd_line.cpp',
     'conv.cpp',
     'cpu_sched.cpp',
+    'rdrnd.cpp',
     'dynamic_buffer.cpp',
     'logger.cpp',
     'system_error.cpp',

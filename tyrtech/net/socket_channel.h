@@ -3,7 +3,8 @@
 
 #include <common/buffered_reader.h>
 #include <common/buffered_writer.h>
-#include <io/socket_channel.h>
+#include <net/socket_reader.h>
+#include <net/socket_writer.h>
 
 
 namespace tyrtech::net {
@@ -39,21 +40,21 @@ private:
             std::array<char, buffer_size>;
 
     using reader_t =
-            buffered_reader<buffer_t, io::socket_channel>;
+            buffered_reader<buffer_t, socket_reader>;
 
     using writer_t =
-            buffered_writer<buffer_t, io::socket_channel>;
+            buffered_writer<buffer_t, socket_writer>;
 
 private:
     socket_ptr m_socket;
 
-    io::socket_channel m_channel;
-
+    socket_reader m_socket_reader;
     buffer_t m_reader_buffer;
-    reader_t m_reader{&m_reader_buffer, &m_channel};
+    reader_t m_reader{&m_reader_buffer, &m_socket_reader};
 
+    socket_writer m_socket_writer;
     buffer_t m_writer_buffer;
-    writer_t m_writer{&m_writer_buffer, &m_channel};
+    writer_t m_writer{&m_writer_buffer, &m_socket_writer};
 };
 
 }

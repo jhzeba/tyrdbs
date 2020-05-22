@@ -7,8 +7,6 @@ io_sources = [
     'tcp_socket.cpp',
     'unix_socket.cpp',
     'file.cpp',
-    'socket_channel.cpp',
-    'file_channel.cpp',
     'io_uring.cpp',
     'queue_flow.cpp'
 ]

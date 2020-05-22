@@ -1,8 +1,8 @@
 #pragma once
 
 
-#include <common/buffered_writer.h>
-#include <io/file_channel.h>
+#include <common/exception.h>
+#include <tyrdbs/writer.h>
 #include <tyrdbs/slice.h>
 #include <tyrdbs/node_writer.h>
 #include <tyrdbs/key_buffer.h>
@@ -24,12 +24,14 @@ public:
              bool deleted);
 
     void flush();
-    uint64_t commit();
+    void commit();
 
+    tyrdbs::writer* writer();
     uint64_t key_count();
 
 public:
-    slice_writer(io::file_channel* channel);
+    slice_writer(std::shared_ptr<tyrdbs::writer> writer);
+    ~slice_writer();
 
 private:
     class index_writer : private disallow_copy, disallow_move
@@ -60,11 +62,8 @@ private:
     };
 
 private:
-    using buffer_t =
-            std::array<char, node::page_size>;
-
-    using writer_t =
-            buffered_writer<buffer_t, io::file_channel>;
+    using writer_ptr =
+            std::shared_ptr<tyrdbs::writer>;
 
 private:
     key_buffer m_first_key;
@@ -73,8 +72,7 @@ private:
     bool m_last_eor{true};
     bool m_commited{false};
 
-    buffer_t m_buffer;
-    writer_t m_writer;
+    writer_ptr m_writer;
 
     node_writer m_node;
     index_writer m_index{this};

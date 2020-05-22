@@ -1,40 +1,233 @@
 #include <common/logger.h>
 #include <common/clock.h>
+#include <common/rdrnd.h>
+#include <gt/async.h>
+#include <io/file.h>
 #include <net/rpc_response.h>
+#include <tyrdbs/writer.h>
+#include <tyrdbs/slice_writer.h>
+#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 
 
 namespace tyrtech::tyrdbs::meta_node::log {
 
 
-impl::context::context(impl* impl)
+class file_reader : public tyrdbs::reader
+{
+public:
+    uint32_t pread(uint64_t offset, char* data, uint32_t size) const override
+    {
+        auto res = m_file.pread(offset, data, size);
+        assert(static_cast<uint32_t>(res) == size);
+
+        return res;
+    }
+
+    void unlink() override
+    {
+        m_file.unlink();
+    }
+
+public:
+    template<typename... Arguments>
+    file_reader(Arguments&&... arguments)
+      : m_file(io::file::open(io::file::access::read_only, std::forward<Arguments>(arguments)...))
+    {
+    }
+
+private:
+    io::file m_file;
+};
+
+
+class file_writer : public tyrdbs::writer
+{
+public:
+    uint32_t write(const char* data, uint32_t size) override
+    {
+        m_writer.write(data, size);
+        return size;
+    }
+
+    void flush() override
+    {
+        m_writer.flush();
+    }
+
+    uint64_t offset() const override
+    {
+        return m_writer.offset();
+    }
+
+    void unlink() override
+    {
+        m_file.unlink();
+    }
+
+    std::string_view path() const
+    {
+        return m_file.path();
+    }
+
+public:
+    template<typename... Arguments>
+    file_writer(Arguments&&... arguments)
+      : m_file(io::file::create(std::forward<Arguments>(arguments)...))
+    {
+    }
+
+private:
+    class stream_writer
+    {
+    public:
+        uint32_t write(const char* data, uint32_t size)
+        {
+            auto res = m_file->pwrite(m_offset, data, size);
+            assert(static_cast<uint32_t>(res) == size);
+
+            m_offset += res;
+
+            return res;
+        }
+
+        uint64_t offset() const
+        {
+            return m_offset;
+        }
+
+    public:
+        stream_writer(io::file* file)
+          : m_file(file)
+        {
+        }
+
+    private:
+        io::file* m_file{nullptr};
+        uint64_t m_offset{0};
+    };
+
+private:
+    using buffer_t =
+            std::array<char, tyrdbs::node::page_size>;
+
+    using writer_t =
+            buffered_writer<buffer_t, stream_writer>;
+
+private:
+    io::file m_file;
+
+    buffer_t m_stream_buffer;
+    stream_writer m_stream_writer{&m_file};
+
+    writer_t m_writer{&m_stream_buffer, &m_stream_writer};
+};
+
+
+using writer_ptr =
+        std::unique_ptr<slice_writer>;
+
+using writers_t =
+        std::unordered_map<uint16_t, writer_ptr>;
+
+using slices_t =
+        std::unordered_map<uint16_t, slice_ptr>;
+
+
+bool load_block(const block_parser& block, writers_t* writers)
+{
+    bool is_last_block = (block.flags() & 0x01) != 0;
+
+    if (block.has_entries() == false)
+    {
+        return is_last_block;
+    }
+
+    auto entries = block.entries();
+
+    while (entries.next() == true)
+    {
+        auto entry = entries.value();
+
+        if (entry.has_key() == false)
+        {
+            continue;
+        }
+
+        std::string_view key;
+        std::string_view value;
+
+        key = entry.key();
+
+        if (entry.has_value() == true)
+        {
+            value = entry.value();
+        }
+
+        auto ushard_id = entry.ushard_id();
+        auto flags = entry.flags();
+
+        auto& writer = (*writers)[ushard_id];
+
+        if (writer == nullptr)
+        {
+            auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
+            writer = std::make_unique<slice_writer>(std::move(fw));
+        }
+
+        bool eor = (flags & 0x01) != 0;
+        bool deleted = (flags & 0x02) != 0;
+
+        writer->add(key, value, eor, deleted);
+    }
+
+    return is_last_block;
+}
+
+writers_t load_writers(net::socket_channel* channel)
+{
+    writers_t writers;
+
+    bool is_last_block = false;
+
+    while (is_last_block == false)
+    {
+        using buffer_t =
+                std::array<char, net::socket_channel::buffer_size>;
+
+        buffer_t buffer;
+        uint16_t* size = reinterpret_cast<uint16_t*>(buffer.data());
+
+        channel->read(size);
+
+        if (unlikely(*size > net::socket_channel::buffer_size - sizeof(uint16_t)))
+        {
+            throw invalid_request_exception("merge results block too big");
+        }
+
+        channel->read(buffer.data() + sizeof(uint16_t), *size);
+
+        message::parser parser(buffer.data(), *size + sizeof(uint16_t));
+        is_last_block = load_block(block_parser(&parser, 0), &writers);
+    }
+
+    return writers;
+}
+
+
+impl::context::context(net::socket_channel* channel)
+  : channel(channel)
 {
 }
 
-impl::context::~context()
+impl::context impl::create_context(net::socket_channel* channel)
 {
+    return context(channel);
 }
 
-impl::context::context(context&& other) noexcept
+void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 {
-    *this = std::move(other);
-}
-
-impl::context& impl::context::operator=(impl::context&& other) noexcept
-{
-    return *this;
-}
-
-impl::context impl::create_context(const std::shared_ptr<io::socket>& remote)
-{
-    return context(this);
-}
-
-void impl::fetch(const fetch::request_parser_t& request,
-                 net::socket_channel* channel,
-                 context* ctx)
-{
-    net::rpc_response<log::fetch> response(channel);
+    net::rpc_response<log::fetch> response(ctx->channel);
     auto message = response.add_message();
 
     response.send();
@@ -42,36 +235,64 @@ void impl::fetch(const fetch::request_parser_t& request,
     // send keys
 }
 
-void impl::update(const update::request_parser_t& request,
-                  net::socket_channel* channel,
-                  context* ctx)
+void impl::update(const update::request_parser_t& request, context* ctx)
 {
-    while (m_slice_count > max_slices)
+    while (m_slice_count > m_max_slices)
     {
         m_slice_count_cond.wait();
     }
 
-    auto id = request.id();
-    auto size = request.size();
-    auto key_count = request.key_count();
+    auto writers = load_writers(ctx->channel);
+    slices_t slices;
+
+    auto jobs = gt::async::create_jobs();
+
+    for (auto& it : writers)
+    {
+        auto f = [&slices,
+                  &writer = it.second,
+                  ushard_id = it.first]
+        {
+            writer->flush();
+            writer->commit();
+
+            file_writer* fw = static_cast<file_writer*>(writer->writer());
+
+            auto reader = std::make_shared<file_reader>(fw->path());
+            auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                         std::move(reader));
+
+            slices[ushard_id] = std::move(slice);
+        };
+
+        jobs.run(std::move(f));
+    }
+
+    jobs.wait();
+
+    writers.clear();
 
     auto tid = m_next_tid++;
 
-    auto tier_id = tier_id_of(key_count);
+    for (auto& it : slices)
+    {
+        auto ushard_id = it.first % m_ushards.size();
+        auto& ushard = m_ushards[ushard_id];
 
-    m_tiers[tier_id].emplace_back(slice());
-    auto& slice = m_tiers[tier_id].back();
+        auto& slice = it.second;
+        slice->set_tid(tid);
 
-    slice.id = id;
-    slice.tid = tid;
-    slice.size = size;
-    slice.key_count = key_count;
+        auto tier_id = ushard::tier_id_of(slice->key_count());
 
-    m_slice_count++;
+        if (ushard.add(tier_id, std::move(slice)) == true)
+        {
+            request_merge_if_needed(ushard_id, tier_id);
+        }
 
-    request_merge_if_needed(tier_id);
+        m_slice_count++;
+    }
 
-    net::rpc_response<log::update> response(channel);
+    net::rpc_response<log::update> response(ctx->channel);
     auto message = response.add_message();
 
     message.set_tid(tid);
@@ -79,9 +300,66 @@ void impl::update(const update::request_parser_t& request,
     response.send();
 }
 
-void impl::merge(const merge::request_parser_t& request,
-                 net::socket_channel* channel,
-                 context* ctx)
+void impl::merge(uint32_t merge_id)
+{
+    auto ushard_id = merge_id / ushard::max_tiers;
+    auto tier_id = merge_id % ushard::max_tiers;
+
+    auto& ushard = m_ushards[ushard_id];
+
+    if (ushard.needs_merge(tier_id) == false)
+    {
+        return;
+    }
+
+    auto slices = ushard.get(tier_id);
+
+    auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
+    auto writer = std::make_unique<slice_writer>(fw);
+
+    auto it = overwrite_iterator(slices);
+
+    writer->add(&it, false);
+
+    writer->flush();
+    writer->commit();
+
+    auto reader = std::make_shared<file_reader>(fw->path());
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                 std::move(reader));
+
+    m_merged_keys += slice->key_count();
+    m_merged_size += fw->offset();
+
+    if (ushard.remove(tier_id, slices.size()) == true)
+    {
+        request_merge_if_needed(ushard_id, tier_id);
+    }
+
+    auto new_tier_id = ushard::tier_id_of(slice->key_count());
+
+    if (ushard.add(new_tier_id, std::move(slice)) == true)
+    {
+        request_merge_if_needed(ushard_id, new_tier_id);
+    }
+
+    assert(m_slice_count >= slices.size());
+    m_slice_count -= slices.size();
+
+    m_slice_count++;
+
+    if (m_slice_count <= m_max_slices)
+    {
+        m_slice_count_cond.signal_all();
+    }
+
+    for (auto& s : slices)
+    {
+        s->unlink();
+    }
+}
+
+void impl::merge_thread()
 {
     while (true)
     {
@@ -100,224 +378,45 @@ void impl::merge(const merge::request_parser_t& request,
             break;
         }
 
-        auto tier_id = m_merge_requests.front();
+        auto merge_id = m_merge_requests.front();
         m_merge_requests.pop();
 
-        assert(m_merge_request_filter[tier_id] == true);
-        m_merge_request_filter[tier_id] = false;
+        assert(m_merge_request_filter[merge_id] == true);
+        m_merge_request_filter[merge_id] = false;
 
-        if (m_merge_locks[tier_id] == true)
+        if (m_merge_locks[merge_id] == true)
         {
             continue;
         }
 
-        m_merge_locks[tier_id] = true;
+        m_merge_locks[merge_id] = true;
 
-        try
-        {
-            merge(channel, tier_id);
-        }
-        catch (...)
-        {
-            m_merge_locks[tier_id] = false;
+        merge(merge_id);
 
-            throw;
-        }
-
-        m_merge_locks[tier_id] = false;
+        m_merge_locks[merge_id] = false;
 
         gt::yield();
     }
-
-    net::rpc_response<log::merge> response(channel);
-    auto message = response.add_message();
-
-    message.add_terminate(1);
-
-    response.send();
 }
 
-uint8_t impl::tier_id_of(uint64_t key_count)
+void impl::request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id)
 {
-    // static uint8_t i{0};
-    // return (i++) % max_tiers;
-    return ((64 - __builtin_clzll(key_count)) >> 2);
-}
+    auto merge_id = merge_id_from(ushard_id, tier_id);
 
-void impl::merge(net::socket_channel* channel, uint8_t tier_id)
-{
-    auto tier = m_tiers[tier_id];
-
-    if (tier.size() <= 4)
+    if (m_merge_request_filter[merge_id] == true)
     {
         return;
     }
 
-    auto t1 = clock::now();
-
-    {
-        net::rpc_response<log::merge> response(channel);
-        auto message = response.add_message();
-
-        response.send();
-    }
-
-    send_tier(tier, true, channel);
-
-    channel->flush();
-
-    tier_t merged_tier = recv_tier(channel);
-
-    if (merged_tier.size() != 1)
-    {
-        throw invalid_request_exception("too many merge results");
-    }
-
-    m_tiers[tier_id].erase(m_tiers[tier_id].begin(),
-                           m_tiers[tier_id].begin() + tier.size());
-
-    auto& merged_slice = merged_tier[0];
-    auto merged_slice_tier_id = tier_id_of(merged_slice.key_count);
-
-    m_tiers[merged_slice_tier_id].emplace_back(merged_slice);
-
-    m_merged_keys += merged_slice.key_count;
-    m_merged_size += merged_slice.size;
-
-    request_merge_if_needed(tier_id);
-    request_merge_if_needed(merged_slice_tier_id);
-
-    assert(m_slice_count >= tier.size());
-    m_slice_count -= tier.size();
-
-    m_slice_count++;
-
-    if (m_slice_count <= max_slices)
-    {
-        m_slice_count_cond.signal_all();
-    }
-
-    auto t2 = clock::now();
-
-    fmt::print("merge took {:.2f} ms\n", (t2 - t1) / 1000000.);
-}
-
-void impl::request_merge_if_needed(uint8_t tier_id)
-{
-    if (m_tiers[tier_id].size() <= 4)
-    {
-        return;
-    }
-
-    if (m_merge_request_filter[tier_id] == true)
-    {
-        return;
-    }
-
-    m_merge_request_filter[tier_id] = true;
-    m_merge_requests.push(tier_id);
+    m_merge_request_filter[merge_id] = true;
+    m_merge_requests.push(merge_id);
 
     m_merge_cond.signal();
 }
 
-impl::tier_t impl::recv_tier(net::socket_channel* channel)
+uint32_t impl::merge_id_from(uint16_t ushard_id, uint8_t tier_id)
 {
-    tier_t tier;
-
-    bool is_last_block = false;
-
-    while (is_last_block == false)
-    {
-        buffer_t buffer;
-        uint16_t* size = reinterpret_cast<uint16_t*>(buffer.data());
-
-        channel->read(size);
-
-        if (unlikely(*size > net::socket_channel::buffer_size - sizeof(uint16_t)))
-        {
-            throw invalid_request_exception("merge results block too big");
-        }
-
-        channel->read(buffer.data() + sizeof(uint16_t), *size);
-
-        message::parser parser(buffer.data(), *size + sizeof(uint16_t));
-        is_last_block = load_block(block_parser(&parser, 0), &tier);
-    }
-
-    return tier;
-}
-
-bool impl::load_block(const block_parser& block, tier_t* tier)
-{
-    bool is_last_block = (block.flags() & 0x01) != 0;
-
-    if (block.has_slices() == false)
-    {
-        return is_last_block;
-    }
-
-    auto slices = block.slices();
-
-    while (slices.next() == true)
-    {
-        auto slice = slices.value();
-
-        tier->emplace_back(impl::slice());
-        auto& tier_slice = tier->back();
-
-        tier_slice.id = slice.id();
-        tier_slice.tid = slice.tid();
-        tier_slice.size = slice.size();
-        tier_slice.key_count = slice.key_count();
-    }
-
-    return is_last_block;
-}
-
-void impl::send_tier(const tier_t& tier, bool signal_last_block, net::socket_channel* channel)
-{
-    buffer_t buffer;
-
-    auto builder = message::builder(buffer.data(), buffer.size());
-    auto block = block_builder(&builder);
-    auto slices = block.add_slices();
-
-    for (auto& tier_slice : tier)
-    {
-        uint16_t bytes_required = 0;
-
-        bytes_required += block_builder::slices_bytes_required();
-        bytes_required += slice_builder::bytes_required();
-
-        if (bytes_required > builder.available_space())
-        {
-            slices.finalize();
-            block.finalize();
-
-            channel->write(buffer.data(), builder.size());
-
-            builder = message::builder(buffer.data(), buffer.size());
-            block = block_builder(&builder);
-            slices = block.add_slices();
-        }
-
-        auto slice = slices.add_value();
-
-        slice.set_id(tier_slice.id);
-        slice.set_size(tier_slice.size);
-        slice.set_tid(tier_slice.tid);
-        slice.set_key_count(tier_slice.key_count);
-    }
-
-    if (signal_last_block == true)
-    {
-        block.set_flags(1);
-    }
-
-    slices.finalize();
-    block.finalize();
-
-    channel->write(buffer.data(), builder.size());
+    return (ushard_id * ushard::max_tiers) + tier_id;
 }
 
 void impl::print_rate()
@@ -350,13 +449,23 @@ void impl::print_rate()
     }
 }
 
-impl::impl(const std::string_view& path)
+impl::impl(const std::string_view& path,
+           uint32_t merge_threads,
+           uint32_t ushards,
+           uint32_t max_slices)
+  : m_max_slices(max_slices)
 {
-    gt::create_thread(&impl::print_rate, this);
+    for (uint32_t i = 0; i < merge_threads; i++)
+    {
+        gt::create_thread(&impl::merge_thread, this);
+    }
 
-    m_merge_locks.resize(max_tiers);
-    m_merge_request_filter.resize(max_tiers);
-    m_tiers.resize(max_tiers);
+    m_merge_locks.resize(ushards * ushard::max_tiers);
+    m_merge_request_filter.resize(ushards * ushard::max_tiers);
+
+    m_ushards.resize(ushards);
+
+    gt::create_thread(&impl::print_rate, this);
 }
 
 }

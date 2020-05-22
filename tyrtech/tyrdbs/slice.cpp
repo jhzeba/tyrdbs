@@ -187,27 +187,15 @@ void slice::set_tid(uint64_t tid)
     m_tid = tid;
 }
 
-uint64_t slice::new_id()
-{
-    unsigned long long rnd;
-
-    if (__builtin_ia32_rdrand64_step(&rnd) != 1)
-    {
-        throw runtime_error_exception("unable to generate rnd");
-    }
-
-    return rnd;
-}
-
-slice::slice(uint64_t size, io::file_channel* channel)
+slice::slice(uint64_t size, std::shared_ptr<reader> reader)
   : m_cache_id(__cache_id++)
-  , m_channel(channel)
+  , m_reader(std::move(reader))
 {
     header h;
 
-    m_channel->pread(size - sizeof(h),
-                     reinterpret_cast<char*>(&h),
-                     sizeof(h));
+    m_reader->pread(size - sizeof(h),
+                    reinterpret_cast<char*>(&h),
+                    sizeof(h));
 
     if (h.signature != signature)
     {
@@ -224,13 +212,13 @@ slice::~slice()
 {
     if (m_unlink == true)
     {
-        // m_channel->unlink();
+        m_reader->unlink();
     }
 }
 
 cache::node_ptr slice::load(uint64_t location) const
 {
-    return cache::get(m_channel, m_cache_id, location);
+    return cache::get(m_reader.get(), m_cache_id, location);
 }
 
 uint64_t slice::find_node_for(uint64_t location,

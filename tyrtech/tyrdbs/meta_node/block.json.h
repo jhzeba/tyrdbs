@@ -8,69 +8,91 @@
 namespace tyrtech::tyrdbs::meta_node {
 
 
-struct slice_builder final : public tyrtech::message::struct_builder<0, 32>
+struct entry_builder final : public tyrtech::message::struct_builder<2, 3>
 {
-    slice_builder(tyrtech::message::builder* builder)
+    entry_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
-    void set_id(uint64_t value)
+    void set_ushard_id(uint16_t value)
     {
-        *reinterpret_cast<uint64_t*>(m_static + 0) = value;
+        *reinterpret_cast<uint16_t*>(m_static + 0) = value;
     }
 
-    void set_tid(uint64_t value)
+    void set_flags(uint8_t value)
     {
-        *reinterpret_cast<uint64_t*>(m_static + 8) = value;
+        *reinterpret_cast<uint8_t*>(m_static + 2) = value;
     }
 
-    void set_size(uint64_t value)
+    void add_key(const std::string_view& value)
     {
-        *reinterpret_cast<uint64_t*>(m_static + 16) = value;
+        set_offset<0>();
+        struct_builder<2, 3>::add_value(value);
     }
 
-    void set_key_count(uint64_t value)
+    static constexpr uint16_t key_bytes_required()
     {
-        *reinterpret_cast<uint64_t*>(m_static + 24) = value;
+        return tyrtech::message::element<std::string_view>::size;
+    }
+
+    void add_value(const std::string_view& value)
+    {
+        set_offset<1>();
+        struct_builder<2, 3>::add_value(value);
+    }
+
+    static constexpr uint16_t value_bytes_required()
+    {
+        return tyrtech::message::element<std::string_view>::size;
     }
 };
 
-struct slice_parser final : public tyrtech::message::struct_parser<0, 32>
+struct entry_parser final : public tyrtech::message::struct_parser<2, 3>
 {
-    slice_parser(const tyrtech::message::parser* parser, uint16_t offset)
+    entry_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
     {
     }
 
-    slice_parser() = default;
+    entry_parser() = default;
 
-    decltype(auto) id() const
+    decltype(auto) ushard_id() const
     {
-        return *reinterpret_cast<const uint64_t*>(m_static + 0);
+        return *reinterpret_cast<const uint16_t*>(m_static + 0);
     }
 
-    decltype(auto) tid() const
+    decltype(auto) flags() const
     {
-        return *reinterpret_cast<const uint64_t*>(m_static + 8);
+        return *reinterpret_cast<const uint8_t*>(m_static + 2);
     }
 
-    decltype(auto) size() const
+    bool has_key() const
     {
-        return *reinterpret_cast<const uint64_t*>(m_static + 16);
+        return has_offset<0>();
     }
 
-    decltype(auto) key_count() const
+    decltype(auto) key() const
     {
-        return *reinterpret_cast<const uint64_t*>(m_static + 24);
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<0>());
+    }
+
+    bool has_value() const
+    {
+        return has_offset<1>();
+    }
+
+    decltype(auto) value() const
+    {
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<1>());
     }
 };
 
 struct block_builder final : public tyrtech::message::struct_builder<1, 1>
 {
-    struct slices_builder final : public tyrtech::message::list_builder
+    struct entries_builder final : public tyrtech::message::list_builder
     {
-        slices_builder(tyrtech::message::builder* builder)
+        entries_builder(tyrtech::message::builder* builder)
           : list_builder(builder)
         {
         }
@@ -78,7 +100,7 @@ struct block_builder final : public tyrtech::message::struct_builder<1, 1>
         decltype(auto) add_value()
         {
             add_element();
-            return slice_builder(m_builder);
+            return entry_builder(m_builder);
         }
     };
 
@@ -92,23 +114,23 @@ struct block_builder final : public tyrtech::message::struct_builder<1, 1>
         *reinterpret_cast<uint8_t*>(m_static + 0) = value;
     }
 
-    decltype(auto) add_slices()
+    decltype(auto) add_entries()
     {
         set_offset<0>();
-        return slices_builder(m_builder);
+        return entries_builder(m_builder);
     }
 
-    static constexpr uint16_t slices_bytes_required()
+    static constexpr uint16_t entries_bytes_required()
     {
-        return slices_builder::bytes_required();
+        return entries_builder::bytes_required();
     }
 };
 
 struct block_parser final : public tyrtech::message::struct_parser<1, 1>
 {
-    struct slices_parser final : public tyrtech::message::list_parser
+    struct entries_parser final : public tyrtech::message::list_parser
     {
-        slices_parser(const tyrtech::message::parser* parser, uint16_t offset)
+        entries_parser(const tyrtech::message::parser* parser, uint16_t offset)
           : list_parser(parser, offset)
         {
         }
@@ -132,7 +154,7 @@ struct block_parser final : public tyrtech::message::struct_parser<1, 1>
 
         decltype(auto) value() const
         {
-            return slice_parser(m_parser, m_offset);
+            return entry_parser(m_parser, m_offset);
         }
     };
 
@@ -148,14 +170,14 @@ struct block_parser final : public tyrtech::message::struct_parser<1, 1>
         return *reinterpret_cast<const uint8_t*>(m_static + 0);
     }
 
-    bool has_slices() const
+    bool has_entries() const
     {
         return has_offset<0>();
     }
 
-    decltype(auto) slices() const
+    decltype(auto) entries() const
     {
-        return slices_parser(m_parser, offset<0>());
+        return entries_parser(m_parser, offset<0>());
     }
 };
 

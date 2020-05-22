@@ -1,6 +1,6 @@
 #include <common/exception.h>
 #include <common/wtinylfu.h>
-#include <storage/latch.h>
+#include <tyrdbs/latch.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/location.h>
 
@@ -45,7 +45,7 @@ using cache_t =
         wtinylfu<cache::key, node_ptr, cache::key_hasher>;
 
 using latch_t =
-        storage::latch<cache::key, node_ptr, cache::key_hasher>;
+        latch<cache::key, node_ptr, cache::key_hasher>;
 
 
 static thread_local std::unique_ptr<cache_t> __cache;
@@ -79,7 +79,7 @@ void set(uint64_t chunk_ndx, uint64_t location, node_ptr node)
     __cache->set(key, std::move(node));
 }
 
-node_ptr load(io::file_channel* channel, uint64_t location)
+node_ptr load(reader* reader, uint64_t location)
 {
     uint64_t node_offset = location::offset_from(location);
     uint16_t node_size = location::size_from(location);
@@ -92,7 +92,7 @@ node_ptr load(io::file_channel* channel, uint64_t location)
     buffer_t buffer;
     char* data = buffer.data();
 
-    channel->pread(node_offset, data, node_size + 6);
+    reader->pread(node_offset, data, node_size + 6);
 
     uint32_t crc32c = *reinterpret_cast<const uint32_t*>(data);
     data += sizeof(crc32c);
@@ -120,11 +120,11 @@ node_ptr load(io::file_channel* channel, uint64_t location)
     return node;
 }
 
-node_ptr get(io::file_channel* channel, uint64_t chunk_ndx, uint64_t location)
+node_ptr get(reader* reader, uint64_t chunk_ndx, uint64_t location)
 {
     if (__cache.get() == nullptr)
     {
-        return load(channel, location);
+        return load(reader, location);
     }
 
     cache::key cache_key;
@@ -147,7 +147,7 @@ node_ptr get(io::file_channel* channel, uint64_t chunk_ndx, uint64_t location)
     {
         __cache_misses++;
 
-        node = load(channel, location);
+        node = load(reader, location);
 
         __latch->release(cache_key);
     }

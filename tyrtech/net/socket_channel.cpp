@@ -30,7 +30,8 @@ const std::shared_ptr<io::socket>& socket_channel::socket()
 
 socket_channel::socket_channel(std::shared_ptr<io::socket> socket, uint64_t timeout)
   : m_socket(std::move(socket))
-  , m_channel(m_socket.get(), timeout)
+  , m_socket_reader(m_socket.get(), timeout)
+  , m_socket_writer(m_socket.get(), timeout)
 {
 }
 

@@ -4,11 +4,13 @@
 #include <common/logger.h>
 #include <gt/engine.h>
 #include <io/engine.h>
-#include <io/file_channel.h>
+#include <io/file.h>
+#include <io/socket.h>
 #include <net/rpc_request.h>
 #include <net/uri.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/meta_node/service.json.h>
+#include <tyrdbs/meta_node/block.json.h>
 #include <crc32c.h>
 
 #include <random>
@@ -20,38 +22,59 @@ using namespace tyrtech;
 
 void update_iteration(const std::set<uint64_t>& keys, uint32_t iteration, net::socket_channel* channel)
 {
-    auto id = tyrdbs::slice::new_id();
-
-    uint64_t size{0};
-    uint64_t key_count{0};
-
-    {
-        auto file = io::file::create("data/{:016x}.dat", id);
-        auto file_channel = io::file_channel(&file);
-        auto slice_writer = tyrdbs::slice_writer(&file_channel);
-
-        for (auto& key : keys)
-        {
-            uint64_t _key = __builtin_bswap64(key + iteration);
-            std::string_view key_str(reinterpret_cast<const char*>(&_key), sizeof(_key));
-
-            slice_writer.add(key_str, key_str, true, false);
-        }
-
-        slice_writer.flush();
-        size = slice_writer.commit();
-
-        key_count = slice_writer.key_count();
-    }
-
     net::rpc_request<tyrdbs::meta_node::log::update> request(channel);
     auto message = request.add_message();
 
-    message.set_id(id);
-    message.set_size(size);
-    message.set_key_count(key_count);
-
     request.execute();
+
+    using buffer_t =
+            std::array<char, net::socket_channel::buffer_size>;
+
+    buffer_t buffer;
+
+    auto builder = message::builder(buffer.data(), buffer.size());
+    auto block = tyrdbs::meta_node::block_builder(&builder);
+
+    auto entries = block.add_entries();
+
+    for (auto key : keys)
+    {
+        key = __builtin_bswap64(key + iteration);
+        auto key_str = std::string_view(reinterpret_cast<const char*>(&key), sizeof(key));
+
+        uint32_t bytes_required = 0;
+
+        bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::value_bytes_required();
+        bytes_required += key_str.size();
+        bytes_required += key_str.size();
+
+        if (bytes_required > builder.available_space())
+        {
+            block.finalize();
+
+            channel->write(buffer.data(), builder.size());
+
+            builder = message::builder(buffer.data(), buffer.size());
+            block = tyrdbs::meta_node::block_builder(&builder);
+
+            entries = block.add_entries();
+        }
+
+        auto entry = entries.add_value();
+
+        entry.set_flags(0x01);
+        entry.set_ushard_id(iteration);
+        entry.add_key(key_str);
+        entry.add_value(key_str);
+    }
+
+    block.set_flags(1);
+    block.finalize();
+
+    channel->write(buffer.data(), builder.size());
+
     request.wait();
 }
 
@@ -67,7 +90,6 @@ void update_thread(const std::string_view& uri,
     std::mt19937 generator(seed);
     std::uniform_int_distribution<uint32_t> distribution(0, static_cast<uint32_t>(-1));
 
-    uint64_t last_print = 0;
     auto t0 = clock::now();
 
     std::set<uint64_t> keys;
@@ -81,33 +103,25 @@ void update_thread(const std::string_view& uri,
     {
         auto t1 = clock::now();
 
-        for (uint32_t j = 0; j < 64; j++)
-        {
-            update_iteration(keys, i, nullptr);//&channel);
-        }
+        update_iteration(keys, i, &channel);
 
         auto t2 = clock::now();
 
         uint64_t iter_t = t2 - t1;
         uint64_t total_t = t2 - t0;
 
-        if ((i % target_rate) == 0)
-        {
-            last_print = total_t;
-
-            logger::notice("#{}: transaction commited in {:.2f} s, {:.2f} transactions/s, {:.2f} keys/s",
-                           i,
-                           iter_t / 1000000.,
-                           (i + 1) * 1000000000. / total_t,
-                           (i + 1) * slices * 1000000000. / total_t);
-        }
+        logger::notice("#{}: transaction commited in {:.2f} ms, {:.2f} transactions/s, {:.2f} keys/s",
+                       i,
+                       iter_t / 1000000.,
+                       (i + 1) * 1000000000. / total_t,
+                       (i + 1) * slices * 1000000000. / total_t);
 
         if (stats_fd != nullptr)
         {
             fmt::print(stats_fd,
                        "{},{},{}\n",
                        t2 / 1000,
-                       i,
+                       slices,
                        iter_t);
 
             fflush(stats_fd);

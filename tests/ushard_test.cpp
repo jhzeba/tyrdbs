@@ -1,11 +1,13 @@
 #include <common/cmd_line.h>
 #include <common/cpu_sched.h>
 #include <common/uuid.h>
+#include <common/buffered_writer.h>
+#include <common/rdrnd.h>
 #include <gt/engine.h>
 #include <gt/async.h>
 #include <gt/condition.h>
 #include <io/engine.h>
-#include <io/file_channel.h>
+#include <io/file.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/overwrite_iterator.h>
@@ -17,10 +19,121 @@
 using namespace tyrtech;
 
 
+class file_reader : public tyrdbs::reader
+{
+public:
+    uint32_t pread(uint64_t offset, char* data, uint32_t size) const override
+    {
+        auto res = m_file.pread(offset, data, size);
+        assert(static_cast<uint32_t>(res) == size);
+
+        return res;
+    }
+
+    void unlink() override
+    {
+        m_file.unlink();
+    }
+
+public:
+    template<typename... Arguments>
+    file_reader(Arguments&&... arguments)
+      : m_file(io::file::open(io::file::access::read_only, std::forward<Arguments>(arguments)...))
+    {
+    }
+
+private:
+    io::file m_file;
+};
+
+class file_writer : public tyrdbs::writer
+{
+public:
+    uint32_t write(const char* data, uint32_t size) override
+    {
+        m_writer.write(data, size);
+        return size;
+    }
+
+    void flush() override
+    {
+        m_writer.flush();
+    }
+
+    uint64_t offset() const override
+    {
+        return m_writer.offset();
+    }
+
+    void unlink() override
+    {
+        m_file.unlink();
+    }
+
+    std::string_view path() const
+    {
+        return m_file.path();
+    }
+
+public:
+    template<typename... Arguments>
+    file_writer(Arguments&&... arguments)
+      : m_file(io::file::create(std::forward<Arguments>(arguments)...))
+    {
+    }
+
+private:
+    class stream_writer
+    {
+    public:
+        uint32_t write(const char* data, uint32_t size)
+        {
+            auto res = m_file->pwrite(m_offset, data, size);
+            assert(static_cast<uint32_t>(res) == size);
+
+            m_offset += res;
+
+            return res;
+        }
+
+        uint64_t offset() const
+        {
+            return m_offset;
+        }
+
+    public:
+        stream_writer(io::file* file)
+          : m_file(file)
+        {
+        }
+
+    private:
+        io::file* m_file{nullptr};
+        uint64_t m_offset{0};
+    };
+
+private:
+    using buffer_t =
+            std::array<char, tyrdbs::node::page_size>;
+
+    using writer_t =
+            buffered_writer<buffer_t, stream_writer>;
+
+private:
+    io::file m_file;
+
+    buffer_t m_stream_buffer;
+    stream_writer m_stream_writer{&m_file};
+
+    writer_t m_writer{&m_stream_buffer, &m_stream_writer};
+};
+
+
 struct thread_data
 {
     using ushard_t =
             std::vector<tyrdbs::slices_t>;
+
 
     std::vector<uint8_t> merge_requests;
     gt::condition merge_cond;
@@ -47,7 +160,6 @@ struct thread_data
     }
 };
 
-
 uint32_t tid{1};
 std::string string_storage;
 
@@ -69,11 +181,8 @@ uint32_t tier_of(const tyrdbs::slice_ptr& slice)
 
 void insert(const data_set_t& data, thread_data* td)
 {
-    char buff[37];
-    auto f = io::file::create("{}.dat", uuid().str(buff, sizeof(buff)));
-    auto ch = io::file_channel(&f);
-
-    tyrdbs::slice_writer w(&ch);
+    auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
+    tyrdbs::slice_writer w(fw);
 
     auto t1 = clock::now();
 
@@ -84,8 +193,12 @@ void insert(const data_set_t& data, thread_data* td)
     }
 
     w.flush();
+    w.commit();
 
-    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), f.path());
+    auto reader = std::make_shared<file_reader>(fw->path());
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                 std::move(reader));
+
     slice->set_tid(tid++);
 
     auto tier = tier_of(slice);
@@ -249,20 +362,21 @@ void merge(thread_data* td, uint8_t tier)
         }
     }
 
-    char buff[37];
-    auto f = io::file::create("{}.dat", uuid().str(buff, sizeof(buff)));
-    auto ch = io::file_channel(&f);
-
-    tyrdbs::slice_writer w(&ch);
+    auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
+    tyrdbs::slice_writer w(fw);
 
     auto t1 = clock::now();
 
     auto db_it = tyrdbs::overwrite_iterator(slices);
 
     w.add(&db_it, compact);
-    w.flush();
 
-    auto slice = std::make_shared<tyrdbs::slice>(w.commit(), f.path());
+    w.flush();
+    w.commit();
+
+    auto reader = std::make_shared<file_reader>(fw->path());
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                 std::move(reader));
 
     if (compact == true)
     {
@@ -275,6 +389,12 @@ void merge(thread_data* td, uint8_t tier)
     {
         td->ushard[tier].erase(td->ushard[tier].begin(),
                                td->ushard[tier].begin() + slices.size());
+
+        if (td->ushard[tier].size() > 4)
+        {
+            td->merge_requests.push_back(tier);
+            td->merge_cond.signal();
+        }
     }
 
     auto merged_keys = slice->key_count();
