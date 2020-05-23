@@ -18,10 +18,19 @@ class file_reader : public tyrdbs::reader
 public:
     uint32_t pread(uint64_t offset, char* data, uint32_t size) const override
     {
-        auto res = m_file.pread(offset, data, size);
-        assert(static_cast<uint32_t>(res) == size);
+        auto orig_size = size;
 
-        return res;
+        while (size != 0)
+        {
+            auto res = m_file.pread(offset, data, size);
+            assert(res != 0);
+
+            data += res;
+            offset += res;
+            size -= res;
+        }
+
+        return orig_size;
     }
 
     void unlink() override
@@ -84,7 +93,11 @@ private:
         uint32_t write(const char* data, uint32_t size)
         {
             auto res = m_file->pwrite(m_offset, data, size);
-            assert(static_cast<uint32_t>(res) == size);
+
+            if (static_cast<uint32_t>(res) != size)
+            {
+                throw runtime_error_exception("invalid write on {}:{:016x}: {} != {}", m_file->path(), m_offset, res, size);
+            }
 
             m_offset += res;
 
@@ -260,6 +273,7 @@ void impl::update(const update::request_parser_t& request, context* ctx)
 
             auto reader = std::make_shared<file_reader>(fw->path());
             auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                         writer->cache_id(),
                                                          std::move(reader));
 
             slices[ushard_id] = std::move(slice);
@@ -326,6 +340,7 @@ void impl::merge(uint32_t merge_id)
 
     auto reader = std::make_shared<file_reader>(fw->path());
     auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                 writer->cache_id(),
                                                  std::move(reader));
 
     m_merged_keys += slice->key_count();
@@ -436,10 +451,10 @@ void impl::print_rate()
 
         float total_t = (cur_timestamp - last_timestamp) / 1000000000.;
 
-        logger::notice("{:.2f} transactions/s, merge {:.2f} keys/s / {:.2f} MB/s",
+        logger::notice("{:.2f} transactions/s, merged: {} keys ({:.2f} MB)",
                        (cur_requests - last_requests) / total_t,
-                       (m_merged_keys - last_merged_keys) / total_t,
-                       (m_merged_size - last_merged_size) / (1024 * 1024 * total_t));
+                       m_merged_keys - last_merged_keys,
+                       (m_merged_size - last_merged_size) / (1024. * 1024));
 
         last_requests = cur_requests;
         last_timestamp = cur_timestamp;

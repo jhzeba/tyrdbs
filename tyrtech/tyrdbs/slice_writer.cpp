@@ -1,10 +1,14 @@
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/location.h>
+#include <tyrdbs/cache.h>
 
 #include <crc32c.h>
 
 
 namespace tyrtech::tyrdbs {
+
+
+extern thread_local uint64_t __cache_id;
 
 
 void slice_writer::index_writer::add(const std::string_view& min_key,
@@ -171,7 +175,8 @@ void slice_writer::flush()
 }
 
 slice_writer::slice_writer(std::shared_ptr<tyrdbs::writer> writer)
-  : m_writer(std::move(writer))
+  : m_cache_id(__cache_id++)
+  , m_writer(std::move(writer))
 {
 }
 
@@ -196,9 +201,14 @@ tyrdbs::writer* slice_writer::writer()
     return m_writer.get();
 }
 
-uint64_t slice_writer::key_count()
+uint64_t slice_writer::key_count() const
 {
     return m_header.stats.key_count;
+}
+
+uint64_t slice_writer::cache_id() const
+{
+    return m_cache_id;
 }
 
 bool slice_writer::check(const std::string_view& key,
@@ -284,6 +294,8 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     }
 
     m_last_node = node->reset();
+
+    cache::set(m_cache_id, location, m_last_node);
 
     m_header.stats.compressed_size += size;
     m_header.stats.uncompressed_size += node::node_size;

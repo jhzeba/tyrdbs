@@ -11,7 +11,7 @@ class ushard : private disallow_copy
 {
 public:
     static constexpr uint32_t max_tiers{16};
-    static constexpr uint32_t max_slices_per_tier{4};
+    static constexpr uint32_t max_slices_per_tier{2};
 
 public:
     bool add(uint8_t tier_id, std::shared_ptr<slice> slice);

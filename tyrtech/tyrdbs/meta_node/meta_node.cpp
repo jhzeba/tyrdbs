@@ -8,6 +8,7 @@
 #include <io/socket.h>
 #include <net/rpc_server.h>
 #include <net/uri.h>
+#include <tyrdbs/cache.h>
 #include <tyrdbs/meta_node/service.json.h>
 #include <tyrdbs/meta_node/log_module.h>
 #include <crc32c.h>
@@ -96,8 +97,15 @@ int main(int argc, const char* argv[])
                   nullptr,
                   "max-slices",
                   "num",
-                  "8192",
-                  {"maximum number of slices allowed (default is 8192)"});
+                  "3072",
+                  {"maximum number of slices allowed (default is 3072)"});
+
+    cmd.add_param("cache-bits",
+                  nullptr,
+                  "cache-bits",
+                  "bits",
+                  "12",
+                  {"cache size expressed as 2^bits (default is 12)"});
 
     cmd.add_param("uri",
                   "<uri>",
@@ -120,6 +128,8 @@ int main(int argc, const char* argv[])
         io::initialize(cmd.get<uint32_t>("iouring-queue-depth"));
         io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
         io::socket::initialize(cmd.get<uint32_t>("network-queue-depth"));
+
+        tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
         gt::create_thread(service_thread,
                           cmd.get<std::string_view>("uri"),

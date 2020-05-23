@@ -12,7 +12,7 @@
 namespace tyrtech::tyrdbs {
 
 
-static thread_local uint64_t __cache_id{0};
+thread_local uint64_t __cache_id{0};
 
 
 class slice_iterator : public iterator
@@ -187,10 +187,15 @@ void slice::set_tid(uint64_t tid)
     m_tid = tid;
 }
 
-slice::slice(uint64_t size, std::shared_ptr<reader> reader)
-  : m_cache_id(__cache_id++)
+slice::slice(uint64_t size, uint64_t cache_id, std::shared_ptr<reader> reader)
+  : m_cache_id(cache_id)
   , m_reader(std::move(reader))
 {
+    if (m_cache_id == static_cast<uint64_t>(-1))
+    {
+        m_cache_id = __cache_id++;
+    }
+
     header h;
 
     m_reader->pread(size - sizeof(h),

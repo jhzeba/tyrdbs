@@ -37,7 +37,7 @@ public:
     void set_tid(uint64_t tid);
 
 public:
-    slice(uint64_t size, std::shared_ptr<reader> reader);
+    slice(uint64_t size, uint64_t cache_id, std::shared_ptr<reader> reader);
 
     slice() = default;
     ~slice();
