@@ -3,13 +3,10 @@
 
 #include <common/disallow_copy.h>
 #include <common/disallow_move.h>
-#include <common/buffered_reader.h>
-#include <common/buffered_writer.h>
 #include <common/logger.h>
-#include <io/channel_reader.h>
-#include <io/channel_writer.h>
-#include <net/http_request.h>
+#include <net/socket_channel.h>
 #include <net/server_exception.h>
+#include <net/http_request.h>
 
 #include <unordered_set>
 #include <array>
@@ -24,45 +21,39 @@ class http_server : private disallow_copy, disallow_move
 public:
     void terminate()
     {
-        m_channel->disconnect();
+        m_socket->disconnect();
 
         for (auto&& remote : m_remotes)
         {
-            remote->disconnect();
+            remote->socket()->disconnect();
         }
     }
 
     std::string_view uri() const
     {
-        return m_channel->uri();
+        return m_socket->uri();
     }
 
 public:
-    http_server(const std::shared_ptr<io::channel>& channel, T* service)
-      : m_channel(channel)
+    http_server(std::shared_ptr<io::socket> socket, T* service)
+      : m_socket(std::move(socket))
       , m_service(service)
     {
         gt::create_thread(&http_server::server_thread, this);
     }
 
 private:
-    using channel_t =
-            std::shared_ptr<io::channel>;
+    using socket_ptr =
+            std::shared_ptr<io::socket>;
 
     using remotes_t =
-            std::unordered_set<channel_t>;
+            std::unordered_set<socket_channel*>;
 
     using buffer_t =
             std::array<char, buffer_size>;
 
-    using reader_t =
-            buffered_reader<buffer_t, io::channel_reader>;
-
-    using writer_t =
-            buffered_writer<buffer_t, io::channel_writer>;
-
 private:
-    channel_t m_channel;
+    socket_ptr m_socket;
     remotes_t m_remotes;
 
     T* m_service{nullptr};
@@ -70,19 +61,19 @@ private:
 private:
     void server_thread()
     {
-        logger::debug("{}: server started", m_channel->uri());
+        logger::debug("{}: server started", m_socket->uri());
 
         while (true)
         {
-            channel_t remote;
+            socket_ptr remote;
 
             try
             {
-                remote = m_channel->accept();
+                remote = m_socket->accept();
             }
-            catch (io::channel::disconnected_error&)
+            catch (io::socket::disconnected_exception&)
             {
-                logger::debug("{}: server shutdown", m_channel->uri());
+                logger::debug("{}: server shutdown", m_socket->uri());
 
                 break;
             }
@@ -90,27 +81,20 @@ private:
             gt::create_thread(&http_server::worker_thread, this, std::move(remote));
         }
 
-        m_channel.reset();
+        m_socket.reset();
     }
 
-    void worker_thread(const channel_t& remote)
+    void worker_thread(socket_ptr remote)
     {
-        m_remotes.insert(remote);
+        socket_channel channel(std::move(remote), 0);
 
         logger::debug("{}: connected", remote->uri());
 
-        buffer_t recv_buffer;
-        buffer_t send_buffer;
-
-        io::channel_reader channel_reader(remote.get());
-        io::channel_writer channel_writer(remote.get());
-
-        reader_t reader(&recv_buffer, &channel_reader);
-        writer_t writer(&send_buffer, &channel_writer);
+        m_remotes.insert(&channel);
 
         try
         {
-            auto ctx = m_service->create_context(remote);
+            auto ctx = m_service->create_context(&channel);
 
             while (true)
             {
@@ -118,37 +102,33 @@ private:
 
                 try
                 {
-                    auto request = http::request::parse(&http_buffer, &reader);
-                    m_service->process_request(request, &ctx, &reader, &writer);
+                    auto request = http::request::parse(&http_buffer, &channel);
+                    m_service->process_request(request, &ctx);
                 }
-                catch (http::malformed_message_error&)
+                catch (http::exception& e)
                 {
-                    throw BAD_REQUEST;
+                    logger::error("{}: {}, disconnecting...", channel.socket()->uri(), e.what());
+
+                    char buff[512];
+                    auto response = format_to(buff, sizeof(buff),
+                                              "HTTP/1.1 {}\r\n"
+                                              "Content-Length: 0\r\n"
+                                              "Connection-Type: Close\r\n"
+                                              "\r\n", e.what());
+
+                    channel.write(response.data(), response.size());
+                    channel.flush();
                 }
 
-                writer.flush();
+                channel.flush();
             }
         }
-        catch (http::error& e)
+        catch (io::socket::disconnected_exception&)
         {
-            logger::error("{}: {}, disconnecting...", remote->uri(), e.what());
-
-            char buff[512];
-            auto response = format_to(buff, sizeof(buff),
-                                      "HTTP/1.1 {}\r\n"
-                                      "Content-Length: 0\r\n"
-                                      "Connection-Type: Close\r\n"
-                                      "\r\n", e.what());
-
-            writer.write(response.data(), response.size());
-            writer.flush();
-        }
-        catch (io::channel::disconnected_error&)
-        {
-            logger::debug("{}: disconnected", remote->uri());
+            logger::debug("{}: disconnected", channel.socket()->uri());
         }
 
-        m_remotes.erase(remote);
+        m_remotes.erase(&channel);
     }
 };
 

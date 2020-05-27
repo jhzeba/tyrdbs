@@ -52,6 +52,22 @@ uint64_t parse(const std::string_view& value)
 }
 
 template<>
+double parse(const std::string_view& value)
+{
+    double parsed_value = 0;
+    return parsed_value;
+
+    // auto res = std::from_chars(value.begin(), value.end(), parsed_value);
+
+    // if (res.ptr != value.end() || res.ec != std::errc())
+    // {
+    //     throw format_error_exception("can't convert '{}' to double", value);
+    // }
+
+    // return parsed_value;
+}
+
+template<>
 std::string_view parse(const std::string_view& value)
 {
     return value;

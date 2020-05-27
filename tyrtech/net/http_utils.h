@@ -10,18 +10,18 @@
 namespace tyrtech::http {
 
 
-DEFINE_EXCEPTION(runtime_error, exception);
-DEFINE_EXCEPTION(exception, malformed_message);
-DEFINE_EXCEPTION(exception, method_not_allowed);
-DEFINE_EXCEPTION(exception, bad_request);
-DEFINE_EXCEPTION(exception, not_found);
-DEFINE_EXCEPTION(exception, internal_server_error);
+DEFINE_EXCEPTION(runtime_error_exception, exception);
+DEFINE_EXCEPTION(exception, malformed_message_exception);
+DEFINE_EXCEPTION(exception, method_not_allowed_exception);
+DEFINE_EXCEPTION(exception, bad_request_exception);
+DEFINE_EXCEPTION(exception, not_found_exception);
+DEFINE_EXCEPTION(exception, internal_server_error_exception);
 
 
-#define BAD_REQUEST tyrtech::http::bad_request_error("400 Bad Request")
-#define NOT_FOUND tyrtech::http::bad_request_error("404 Not Found")
-#define METHOD_NOT_ALLOWED tyrtech::http::method_not_allowed_error("405 Method Not Allowed")
-#define INTERNAL_SERVER_ERROR tyrtech::http::internal_server_error("500 Internal Server Error")
+#define BAD_REQUEST tyrtech::http::bad_request_exception("400 Bad Request")
+#define NOT_FOUND tyrtech::http::bad_request_exception("404 Not Found")
+#define METHOD_NOT_ALLOWED tyrtech::http::method_not_allowed_exception("405 Method Not Allowed")
+#define INTERNAL_SERVER_ERROR tyrtech::http::internal_server_error_exception("500 Internal Server Error")
 
 
 std::regex __request_line("^([A-Z]+)[ ]+([^ ]+)[ ]+HTTP/(\\d+\\.\\d+)\r\n$",

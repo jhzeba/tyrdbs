@@ -30,12 +30,12 @@ public:
 
         if (line.data() == nullptr)
         {
-            throw malformed_message_error("response line empty");
+            throw malformed_message_exception("response line empty");
         }
 
         if (std::regex_match(line.begin(), line.end(), m, __response_line) == false)
         {
-            throw malformed_message_error("unable to parse response line");
+            throw malformed_message_exception("unable to parse response line");
         }
 
         assert(likely(m.size() == 4));
@@ -50,7 +50,7 @@ public:
 
             if (line.data() == nullptr)
             {
-                throw malformed_message_error("unexpected hader ending");
+                throw malformed_message_exception("unexpected hader ending");
             }
 
             if (line.compare("\r\n") == 0)
@@ -60,7 +60,7 @@ public:
 
             if (std::regex_match(line.begin(), line.end(), m, __header_line) == false)
             {
-                throw malformed_message_error("unable to parse header line");
+                throw malformed_message_exception("unable to parse header line");
             }
 
             assert(likely(m.size() == 3));

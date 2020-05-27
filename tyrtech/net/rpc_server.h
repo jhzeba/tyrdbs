@@ -3,7 +3,6 @@
 
 #include <common/disallow_copy.h>
 #include <common/disallow_move.h>
-#include <common/buffered_reader.h>
 #include <common/logger.h>
 #include <net/rpc_response.h>
 #include <net/server_exception.h>
