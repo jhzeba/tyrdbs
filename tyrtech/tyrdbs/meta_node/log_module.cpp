@@ -477,7 +477,8 @@ impl::impl(const std::string_view& path,
            uint32_t merge_threads,
            uint32_t ushards,
            uint32_t max_slices)
-  : m_max_slices(max_slices)
+  : m_path(path)
+  , m_max_slices(max_slices)
 {
     for (uint32_t i = 0; i < merge_threads; i++)
     {
