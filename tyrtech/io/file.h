@@ -113,7 +113,6 @@ private:
 
 private:
     void open(int32_t flags, int32_t mode);
-    void mkostemp(int32_t flags);
 };
 
 
