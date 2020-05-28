@@ -24,17 +24,14 @@ using server_t =
         net::rpc_server<service_t>;
 
 
-void service_thread(const std::string_view& uri,
-                    uint32_t merge_threads,
-                    uint32_t ushards,
-                    uint32_t max_slices)
+void service_thread(const cmd_line& cmd)
 {
-    auto ch = net::uri::listen(uri);
+    auto ch = net::uri::listen(cmd.get<std::string_view>("uri"));
 
-    tyrdbs::meta_node::log::impl impl("data",
-                                      merge_threads,
-                                      ushards,
-                                      max_slices);
+    tyrdbs::meta_node::log::impl impl(cmd.get<std::string_view>("path"),
+                                      cmd.get<uint32_t>("merge-threads"),
+                                      cmd.get<uint32_t>("ushards"),
+                                      cmd.get<uint32_t>("max-slices"));
 
     service_t service(&impl);
 
@@ -107,6 +104,13 @@ int main(int argc, const char* argv[])
                   "12",
                   {"cache size expressed as 2^bits (default is 12)"});
 
+    cmd.add_param("path",
+                  nullptr,
+                  "path",
+                  "path",
+                  "data",
+                  {"data path to use (default is data)"});
+
     cmd.add_param("uri",
                   "<uri>",
                   {"uri to listen on"});
@@ -131,11 +135,7 @@ int main(int argc, const char* argv[])
 
         tyrdbs::cache::initialize(cmd.get<uint32_t>("cache-bits"));
 
-        gt::create_thread(service_thread,
-                          cmd.get<std::string_view>("uri"),
-                          cmd.get<uint32_t>("merge-threads"),
-                          cmd.get<uint32_t>("ushards"),
-                          cmd.get<uint32_t>("max-slices"));
+        gt::create_thread(service_thread, std::cref(cmd));
 
         gt::run();
     }
