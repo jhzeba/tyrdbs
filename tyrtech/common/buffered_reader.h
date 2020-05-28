@@ -86,8 +86,6 @@ private:
     {
         m_size = m_source->read(m_buffer->data(), m_buffer->size());
         m_offset = 0;
-
-        assert(likely(m_size != 0));
     }
 
     template<typename T = SourceType>
