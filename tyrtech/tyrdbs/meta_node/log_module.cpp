@@ -23,11 +23,16 @@ public:
         while (size != 0)
         {
             auto res = m_file.pread(offset, data, size);
-            assert(res != 0);
+
+            if (res == 0)
+            {
+                throw io::file::exception("{}: unexpected end of file", m_file.path());
+            }
 
             data += res;
-            offset += res;
             size -= res;
+
+            offset += res;
         }
 
         return orig_size;
@@ -92,16 +97,20 @@ private:
     public:
         uint32_t write(const char* data, uint32_t size)
         {
-            auto res = m_file->pwrite(m_offset, data, size);
+            auto orig_size = size;
 
-            if (static_cast<uint32_t>(res) != size)
+            while (size != 0)
             {
-                throw runtime_error_exception("invalid write on {}:{:016x}: {} != {}", m_file->path(), m_offset, res, size);
+                auto res = m_file->pwrite(m_offset, data, size);
+                assert(res != 0);
+
+                data += res;
+                size -= res;
+
+                m_offset += res;
             }
 
-            m_offset += res;
-
-            return res;
+            return orig_size;
         }
 
         uint64_t offset() const
