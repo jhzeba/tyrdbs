@@ -3,6 +3,7 @@
 #include <common/uuid.h>
 #include <common/system_error.h>
 #include <gt/engine.h>
+#include <gt/condition.h>
 #include <io/engine.h>
 #include <io/file.h>
 
@@ -14,6 +15,10 @@
 
 
 using namespace tyrtech;
+
+
+int running_threads{0};
+gt::condition cond;
 
 
 enum class operation
@@ -69,16 +74,109 @@ void read_test(operation op,
             }
         }
     }
+
+    running_threads--;
+    cond.signal();
+}
+
+void main_thread(const cmd_line& cmd)
+{
+    auto op_str = cmd.get<std::string_view>("operation");
+    operation op;
+
+    if (op_str == "read")
+    {
+        op = operation::READ;
+    }
+    else if (op_str == "nop")
+    {
+        op = operation::NOP;
+    }
+    else if (op_str == "yield")
+    {
+        op = operation::YIELD;
+    }
+    else
+    {
+        throw cmd_line::exception("{}: invalid argument value",
+                                  cmd.get<std::string_view>("operation"));
+    }
+
+    auto f = io::file::open(io::file::access::read_only,
+                            cmd.get<std::string_view>("file"));
+
+    auto stat = f.stat();
+
+    uint32_t pages = 0;
+
+    if (S_ISBLK(stat.st_mode) == true)
+    {
+        uint64_t size;
+
+        if (ioctl(f.fd(), BLKGETSIZE64, &size) == -1)
+        {
+            throw runtime_error_exception("{}: {}", f.path(), system_error().message);
+        }
+
+        pages = size >> 12;
+    }
+    else
+    {
+        pages = stat.st_size >> 12;
+    }
+
+    assert(pages != 0);
+
+    std::vector<tests::stats> s;
+
+    for (uint32_t i = 0; i < cmd.get<uint32_t>("threads"); i++)
+    {
+        s.push_back(tests::stats());
+    }
+
+    for (uint32_t i = 0; i < s.size(); i++)
+    {
+        gt::create_thread(read_test,
+                          op,
+                          cmd.get<uint32_t>("seed") + i,
+                          &f,
+                          pages,
+                          cmd.get<uint32_t>("iterations"),
+                          &s[i]);
+
+        running_threads++;
+    }
+
+    auto t1 = clock::now();
+
+    while (running_threads > 0)
+    {
+        cond.wait();
+    }
+
+    auto t2 = clock::now();
+
+    logger::notice("pages: {}", pages);
+    logger::notice("");
+
+    for (uint32_t i = 0; i < s.size(); i++)
+    {
+        logger::notice("thread {} read latency [ns]:", i);
+        logger::notice("");
+        s[i].report();
+        logger::notice("");
+    }
+
+    float iops = cmd.get<uint32_t>("iterations") *
+            cmd.get<uint32_t>("threads") /
+            ((t2 - t1) / 1000000000.);
+
+    logger::notice("avg iops: {:.2f}", iops);
+    logger::notice("avg read: {:.2f} MiB/s", iops / 256);
 }
 
 int main(int argc, const char* argv[])
 {
-    for (uint32_t i = 0; i < 100000000; i++)
-    {
-        unsigned long long rnd;
-        assert(__builtin_ia32_rdrand64_step(&rnd) == 1);
-    }
-    /*
     cmd_line cmd(argv[0], "Measure I/O subsystem read latencies.", nullptr);
 
     cmd.add_param("operation",
@@ -133,100 +231,15 @@ int main(int argc, const char* argv[])
 
     cmd.parse(argc, argv);
 
-    auto op_str = cmd.get<std::string_view>("operation");
-    operation op;
-
-    if (op_str == "read")
-    {
-        op = operation::READ;
-    }
-    else if (op_str == "nop")
-    {
-        op = operation::NOP;
-    }
-    else if (op_str == "yield")
-    {
-        op = operation::YIELD;
-    }
-    else
-    {
-        throw cmd_line::exception("{}: invalid argument value",
-                                  cmd.get<std::string_view>("operation"));
-    }
-
     set_cpu(cmd.get<uint32_t>("cpu"));
 
     gt::initialize();
     io::initialize(4096);
     io::file::initialize(cmd.get<uint32_t>("storage-queue-depth"));
 
-    auto f = io::file::open(io::file::access::read_only, cmd.get<std::string_view>("file"));
-    */
-    /*
-    auto stat = f.stat();
-
-    uint32_t pages = 0;
-
-    if (S_ISBLK(stat.st_mode) == true)
-    {
-        uint64_t size;
-
-        if (ioctl(f.fd(), BLKGETSIZE64, &size) == -1)
-        {
-            throw runtime_error("{}: {}", f.path(), system_error().message);
-        }
-
-        pages = size >> 12;
-    }
-    else
-    {
-        pages = stat.st_size >> 12;
-    }
-
-    assert(pages != 0);
-
-    std::vector<tests::stats> s;
-
-    for (uint32_t i = 0; i < cmd.get<uint32_t>("threads"); i++)
-    {
-        s.push_back(tests::stats());
-    }
-
-    for (uint32_t i = 0; i < s.size(); i++)
-    {
-        gt::create_thread(read_test,
-                          op,
-                          cmd.get<uint32_t>("seed") + i,
-                          &f,
-                          pages,
-                          cmd.get<uint32_t>("iterations"),
-                          &s[i]);
-    }
-
-    auto t1 = clock::now();
+    gt::create_thread(main_thread, std::cref(cmd));
 
     gt::run();
-
-    auto t2 = clock::now();
-
-    logger::notice("pages: {}", pages);
-    logger::notice("");
-
-    for (uint32_t i = 0; i < s.size(); i++)
-    {
-        logger::notice("thread {} read latency [ns]:", i);
-        logger::notice("");
-        s[i].report();
-        logger::notice("");
-    }
-
-    float iops = cmd.get<uint32_t>("iterations") *
-            cmd.get<uint32_t>("threads") /
-            ((t2 - t1) / 1000000000.);
-
-    logger::notice("avg iops: {:.2f}", iops);
-    logger::notice("avg read: {:.2f} MiB/s", iops / 256);
-    */
 
     return 0;
 }
