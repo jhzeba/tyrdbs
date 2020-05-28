@@ -1,3 +1,4 @@
+#include <common/branch_prediction.h>
 #include <common/conv.h>
 
 #include <charconv>
@@ -13,7 +14,7 @@ uint16_t parse(const std::string_view& value)
 
     auto res = std::from_chars(value.begin(), value.end(), parsed_value);
 
-    if (res.ptr != value.end() || res.ec != std::errc())
+    if (unlikely(res.ptr != value.end() || res.ec != std::errc()))
     {
         throw format_error_exception("can't convert '{}' to u16", value);
     }
@@ -28,7 +29,7 @@ uint32_t parse(const std::string_view& value)
 
     auto res = std::from_chars(value.begin(), value.end(), parsed_value);
 
-    if (res.ptr != value.end() || res.ec != std::errc())
+    if (unlikely(res.ptr != value.end() || res.ec != std::errc()))
     {
         throw format_error_exception("can't convert '{}' to u32", value);
     }
@@ -43,7 +44,7 @@ uint64_t parse(const std::string_view& value)
 
     auto res = std::from_chars(value.begin(), value.end(), parsed_value);
 
-    if (res.ptr != value.end() || res.ec != std::errc())
+    if (unlikely(res.ptr != value.end() || res.ec != std::errc()))
     {
         throw format_error_exception("can't convert '{}' to u64", value);
     }
@@ -54,10 +55,20 @@ uint64_t parse(const std::string_view& value)
 template<>
 double parse(const std::string_view& value)
 {
-    char* end_ptr{nullptr};
-    double parsed_value = std::strtod(value.begin(), &end_ptr);
+    char buff[32];
 
-    if (end_ptr != value.end() || errno != 0)
+    if (unlikely(value.size() >= sizeof(buff)))
+    {
+        throw format_error_exception("can't convert '{}' to double", value);
+    }
+
+    std::memcpy(buff, value.data(), value.size());
+    buff[value.size()] = 0;
+
+    char* end_ptr{nullptr};
+    double parsed_value = std::strtod(buff, &end_ptr);
+
+    if (unlikely(end_ptr != (buff + value.size()) || errno != 0))
     {
         throw format_error_exception("can't convert '{}' to double", value);
     }
