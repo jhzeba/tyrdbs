@@ -2,6 +2,7 @@
 
 
 #include <gt/condition.h>
+#include <tyrdbs/slice_writer.h>
 #include <tyrdbs/meta_node/ushard.h>
 #include <tyrdbs/meta_node/modules.json.h>
 #include <tyrdbs/meta_node/block.json.h>
@@ -48,6 +49,15 @@ private:
     using ushards_t =
             std::vector<ushard>;
 
+    using writer_ptr =
+        std::unique_ptr<slice_writer>;
+
+    using writers_t =
+            std::unordered_map<uint16_t, writer_ptr>;
+
+    using slices_t =
+            std::unordered_map<uint16_t, slice_ptr>;
+
 private:
     std::string_view m_path;
 
@@ -69,6 +79,9 @@ private:
     ushards_t m_ushards;
 
 private:
+    bool load_block(const block_parser& block, writers_t* writers);
+    writers_t load_writers(net::socket_channel* channel);
+
     uint32_t merge_id_from(uint16_t ushard_id, uint8_t tier_id);
     void request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id);
     void merge(uint32_t merge_id);

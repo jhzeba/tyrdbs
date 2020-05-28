@@ -5,7 +5,6 @@
 #include <io/file.h>
 #include <net/rpc_response.h>
 #include <tyrdbs/writer.h>
-#include <tyrdbs/slice_writer.h>
 #include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 
@@ -144,97 +143,6 @@ private:
 
     writer_t m_writer{&m_stream_buffer, &m_stream_writer};
 };
-
-
-using writer_ptr =
-        std::unique_ptr<slice_writer>;
-
-using writers_t =
-        std::unordered_map<uint16_t, writer_ptr>;
-
-using slices_t =
-        std::unordered_map<uint16_t, slice_ptr>;
-
-
-bool load_block(const block_parser& block, writers_t* writers)
-{
-    bool is_last_block = (block.flags() & 0x01) != 0;
-
-    if (block.has_entries() == false)
-    {
-        return is_last_block;
-    }
-
-    auto entries = block.entries();
-
-    while (entries.next() == true)
-    {
-        auto entry = entries.value();
-
-        if (entry.has_key() == false)
-        {
-            continue;
-        }
-
-        std::string_view key;
-        std::string_view value;
-
-        key = entry.key();
-
-        if (entry.has_value() == true)
-        {
-            value = entry.value();
-        }
-
-        auto ushard_id = entry.ushard_id();
-        auto flags = entry.flags();
-
-        auto& writer = (*writers)[ushard_id];
-
-        if (writer == nullptr)
-        {
-            auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
-            writer = std::make_unique<slice_writer>(std::move(fw));
-        }
-
-        bool eor = (flags & 0x01) != 0;
-        bool deleted = (flags & 0x02) != 0;
-
-        writer->add(key, value, eor, deleted);
-    }
-
-    return is_last_block;
-}
-
-writers_t load_writers(net::socket_channel* channel)
-{
-    writers_t writers;
-
-    bool is_last_block = false;
-
-    while (is_last_block == false)
-    {
-        using buffer_t =
-                std::array<char, net::socket_channel::buffer_size>;
-
-        buffer_t buffer;
-        uint16_t* size = reinterpret_cast<uint16_t*>(buffer.data());
-
-        channel->read(size);
-
-        if (unlikely(*size > net::socket_channel::buffer_size - sizeof(uint16_t)))
-        {
-            throw invalid_request_exception("merge results block too big");
-        }
-
-        channel->read(buffer.data() + sizeof(uint16_t), *size);
-
-        message::parser parser(buffer.data(), *size + sizeof(uint16_t));
-        is_last_block = load_block(block_parser(&parser, 0), &writers);
-    }
-
-    return writers;
-}
 
 
 impl::context::context(net::socket_channel* channel)
@@ -441,6 +349,86 @@ void impl::request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id)
 uint32_t impl::merge_id_from(uint16_t ushard_id, uint8_t tier_id)
 {
     return (ushard_id * ushard::max_tiers) + tier_id;
+}
+
+bool impl::load_block(const block_parser& block, writers_t* writers)
+{
+    bool is_last_block = (block.flags() & 0x01) != 0;
+
+    if (block.has_entries() == false)
+    {
+        return is_last_block;
+    }
+
+    auto entries = block.entries();
+
+    while (entries.next() == true)
+    {
+        auto entry = entries.value();
+
+        if (entry.has_key() == false)
+        {
+            continue;
+        }
+
+        std::string_view key;
+        std::string_view value;
+
+        key = entry.key();
+
+        if (entry.has_value() == true)
+        {
+            value = entry.value();
+        }
+
+        auto ushard_id = entry.ushard_id();
+        auto flags = entry.flags();
+
+        auto& writer = (*writers)[ushard_id];
+
+        if (writer == nullptr)
+        {
+            auto fw = std::make_shared<file_writer>("{}/{:016x}.dat", m_path, rdrnd());
+            writer = std::make_unique<slice_writer>(std::move(fw));
+        }
+
+        bool eor = (flags & 0x01) != 0;
+        bool deleted = (flags & 0x02) != 0;
+
+        writer->add(key, value, eor, deleted);
+    }
+
+    return is_last_block;
+}
+
+impl::writers_t impl::load_writers(net::socket_channel* channel)
+{
+    writers_t writers;
+
+    bool is_last_block = false;
+
+    while (is_last_block == false)
+    {
+        using buffer_t =
+                std::array<char, net::socket_channel::buffer_size>;
+
+        buffer_t buffer;
+        uint16_t* size = reinterpret_cast<uint16_t*>(buffer.data());
+
+        channel->read(size);
+
+        if (unlikely(*size > net::socket_channel::buffer_size - sizeof(uint16_t)))
+        {
+            throw invalid_request_exception("merge results block too big");
+        }
+
+        channel->read(buffer.data() + sizeof(uint16_t), *size);
+
+        message::parser parser(buffer.data(), *size + sizeof(uint16_t));
+        is_last_block = load_block(block_parser(&parser, 0), &writers);
+    }
+
+    return writers;
 }
 
 void impl::print_rate()
