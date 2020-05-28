@@ -51,6 +51,21 @@ public:
         read(reinterpret_cast<char*>(data), sizeof(T));
     }
 
+    char read()
+    {
+        if (unlikely(m_offset == m_size))
+        {
+            load();
+
+            if (unlikely(m_offset == m_size))
+            {
+                throw exception("no more data in source");
+            }
+        }
+
+        return m_buffer->data()[m_offset++];
+    }
+
 public:
     buffered_reader(BufferType* buffer, SourceType* source = nullptr) noexcept
       : m_buffer(buffer)
