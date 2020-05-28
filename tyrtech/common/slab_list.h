@@ -64,7 +64,7 @@ public:
 
     uint32_t insert_before(uint32_t p)
     {
-        insert_before(p, allocate_entry());
+        return insert_before(p, allocate_entry());
     }
 
     uint32_t insert_after(uint32_t p)
