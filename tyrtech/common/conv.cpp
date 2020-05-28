@@ -65,6 +65,8 @@ double parse(const std::string_view& value)
     std::memcpy(buff, value.data(), value.size());
     buff[value.size()] = 0;
 
+    errno = 0;
+
     char* end_ptr{nullptr};
     double parsed_value = std::strtod(buff, &end_ptr);
 
