@@ -16,8 +16,10 @@ public:
 
     std::string_view key() const override;
     std::string_view value() const override;
+
     bool eor() const override;
     bool deleted() const override;
+
     uint64_t tid() const override;
 
 public:

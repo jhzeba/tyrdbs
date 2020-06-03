@@ -15,8 +15,10 @@ struct iterator : private disallow_copy, disallow_move
 
     virtual std::string_view key() const = 0;
     virtual std::string_view value() const = 0;
+
     virtual bool eor() const = 0;
     virtual bool deleted() const = 0;
+
     virtual uint64_t tid() const = 0;
 
     virtual ~iterator() = default;
