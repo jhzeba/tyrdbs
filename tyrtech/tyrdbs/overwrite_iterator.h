@@ -22,8 +22,8 @@ public:
 
 public:
     overwrite_iterator(const std::string_view& min_key,
-              const std::string_view& max_key,
-              slices_t slices);
+                       const std::string_view& max_key,
+                       slices_t slices);
     overwrite_iterator(slices_t slices);
 
 private:
