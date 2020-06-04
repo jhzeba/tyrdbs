@@ -26,18 +26,18 @@ public:
         return true;
     }
 
-    decltype(auto) value() const
+    decltype(auto) sample() const
     {
         struct
         {
             uint64_t timestamp;
             uint64_t value;
-        } v;
+        } s;
 
-        v.timestamp = m_timestamp;
-        v.value = m_value;
+        s.timestamp = m_timestamp;
+        s.value = m_value;
 
-        return v;
+        return s;
     }
 
 public:

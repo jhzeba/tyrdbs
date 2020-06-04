@@ -11,7 +11,7 @@ template<typename BufferWriter>
 class gorilla_writer : private disallow_copy
 {
 public:
-    void write(uint64_t timestamp, uint64_t value)
+    void add_sample(uint64_t timestamp, uint64_t value)
     {
         write_timestamp(timestamp);
         write_value(value);
