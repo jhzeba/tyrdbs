@@ -15,7 +15,7 @@
 namespace tyrtech::net {
 
 
-template<uint16_t buffer_size, typename T>
+template<typename T>
 class http_server : private disallow_copy, disallow_move
 {
 public:
@@ -50,7 +50,7 @@ private:
             std::unordered_set<socket_channel*>;
 
     using buffer_t =
-            std::array<char, buffer_size>;
+            std::array<char, socket_channel::buffer_size>;
 
 private:
     socket_ptr m_socket;
@@ -88,7 +88,7 @@ private:
     {
         socket_channel channel(std::move(remote), 0);
 
-        logger::debug("{}: connected", remote->uri());
+        logger::debug("{}: connected", channel.socket()->uri());
 
         m_remotes.insert(&channel);
 
@@ -98,16 +98,16 @@ private:
 
             while (true)
             {
-                buffer_t http_buffer;
+                buffer_t request_buffer;
 
                 try
                 {
-                    auto request = http::request::parse(&http_buffer, &channel);
+                    auto request = http::request::parse(&request_buffer, &channel);
                     m_service->process_request(request, &ctx);
                 }
                 catch (http::exception& e)
                 {
-                    logger::error("{}: {}, disconnecting...", channel.socket()->uri(), e.what());
+                    logger::error("{}: {}", channel.socket()->uri(), e.what());
 
                     char buff[512];
                     auto response = format_to(buff, sizeof(buff),
@@ -117,7 +117,6 @@ private:
                                               "\r\n", e.what());
 
                     channel.write(response.data(), response.size());
-                    channel.flush();
                 }
 
                 channel.flush();

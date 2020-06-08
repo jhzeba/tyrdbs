@@ -27,6 +27,11 @@ public:
         read(reinterpret_cast<char*>(data), sizeof(T));
     }
 
+    char read()
+    {
+        return m_reader.read();
+    }
+
     const std::shared_ptr<io::socket>& socket();
 
 public:
