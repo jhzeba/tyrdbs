@@ -33,9 +33,8 @@ void service_thread(const cmd_line& cmd)
                                       cmd.get<uint32_t>("ushards"),
                                       cmd.get<uint32_t>("max-slices"));
 
-    service_t service(&impl);
-
-    server_t server(ch, &service);
+    service_t svc(&impl);
+    server_t srv(ch, &svc);
 
     while (gt::terminated() == false)
     {
