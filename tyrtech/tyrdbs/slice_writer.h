@@ -73,7 +73,7 @@ private:
     key_buffer m_first_key;
     key_buffer m_last_key;
 
-    bool m_last_eor{true};
+    bool m_last_eor{false};
     bool m_commited{false};
 
     writer_ptr m_writer;
