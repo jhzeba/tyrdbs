@@ -271,7 +271,7 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     buffer_t buffer;
 
     uint32_t size = node->flush(buffer.data(), buffer.size());
-    assert(likely(size <= location::max_size));
+    assert(likely(size <= node::page_size));
 
     if (m_header.first_node_size != location::invalid_size)
     {
