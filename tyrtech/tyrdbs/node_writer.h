@@ -76,11 +76,7 @@ private:
         required_size += key.size();
         required_size += sizeof(Attributes);
 
-        if (no_split == false)
-        {
-            required_size += std::max(16UL, value.size() >> 3);
-        }
-        else
+        if (no_split == true)
         {
             required_size += value.size();
         }
