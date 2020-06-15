@@ -81,8 +81,8 @@ void set(uint64_t chunk_ndx, uint64_t location, node_ptr node)
 
 node_ptr load(reader* reader, uint64_t location)
 {
-    uint64_t node_offset = location::offset_from(location);
-    uint16_t node_size = location::size_from(location);
+    uint64_t node_offset = location::offset(location);
+    uint16_t node_size = location::size(location);
 
     assert(likely(node_size <= node::page_size));
 
@@ -107,7 +107,7 @@ node_ptr load(reader* reader, uint64_t location)
     node->load(data, node_size);
     data += node_size;
 
-    uint64_t offset = location::offset_from(location);
+    uint64_t offset = location::offset(location);
 
     offset += node_size;
     offset += 6;

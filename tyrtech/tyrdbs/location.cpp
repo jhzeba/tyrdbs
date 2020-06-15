@@ -7,17 +7,17 @@
 namespace tyrtech::tyrdbs::location {
 
 
-uint64_t offset_from(uint64_t location)
+uint64_t offset(uint64_t location)
 {
     return location >> 16;
 }
 
-uint16_t size_from(uint64_t location)
+uint16_t size(uint64_t location)
 {
     return location & 0x7fffU;
 }
 
-bool is_leaf_from(uint64_t location)
+bool is_leaf(uint64_t location)
 {
     return (location & 0x8000U) != 0;
 }

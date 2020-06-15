@@ -126,7 +126,7 @@ bool slice_iterator::load_next()
 
         m_node = m_slice->load(location);
 
-        if (location::is_leaf_from(location) == true)
+        if (location::is_leaf(location) == true)
         {
             break;
         }
@@ -265,7 +265,7 @@ uint64_t slice::find_node_for(uint64_t location,
 
         location = node->template attributes_at<index_attributes>(ndx)->location;
 
-        if (location::is_leaf_from(location) == true)
+        if (location::is_leaf(location) == true)
         {
             break;
         }
