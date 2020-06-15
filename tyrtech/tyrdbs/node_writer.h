@@ -37,8 +37,8 @@ public:
 
         node::entry* entry = next_entry();
 
-        auto&& copied_key = copy(key);
-        auto&& copied_value = copy(value, sizeof(attributes));
+        auto copied_key = copy(key);
+        auto copied_value = copy(value, sizeof(attributes));
 
         copy(attributes);
 

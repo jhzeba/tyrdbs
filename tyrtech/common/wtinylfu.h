@@ -134,7 +134,7 @@ public:
 
         m_map.reserve(max_items);
 
-        for (auto&& counter : m_counters)
+        for (auto& counter : m_counters)
         {
             counter.initialize(max_items / m_counters.size());
         }
@@ -299,7 +299,7 @@ private:
         {
             uint32_t count = 0;
 
-            for (auto&& counters : table)
+            for (auto& counters : table)
             {
                 count += __builtin_popcountll(counters & 0x1111111111111111UL);
                 counters = (counters >> 1) & 0x7777777777777777UL;

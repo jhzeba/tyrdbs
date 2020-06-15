@@ -185,7 +185,7 @@ void insert(const data_set_t& data, thread_data* td)
 
     auto t1 = clock::now();
 
-    for (auto&& it : data)
+    for (auto& it : data)
     {
         std::string_view key(string_storage.data() + it.first, it.second);
         w.add(key, key, true, false);
@@ -472,7 +472,7 @@ void test(const data_sets_t* data,
 
     gt::create_thread(merge_thread, td);
 
-    for (auto&& set : *data)
+    for (auto& set : *data)
     {
         insert(set, td);
     }
@@ -634,8 +634,8 @@ int main(int argc, const char* argv[])
 
     set_cpu(cmd.get<uint32_t>("cpu"));
 
-    auto&& data = load_data(cmd.get<std::string_view>("input-data"));
-    auto&& test_data = load_test_data(cmd.get<std::string_view>("test-data"));
+    auto data = load_data(cmd.get<std::string_view>("input-data"));
+    auto test_data = load_test_data(cmd.get<std::string_view>("test-data"));
 
     assert(crc32c_initialize() == true);
 
@@ -668,7 +668,7 @@ int main(int argc, const char* argv[])
     logger::notice("execution took \033[1m{:.6f} s\033[0m",
                    (t2 - t1) / 1000000000.);
 
-    for (auto&& t : td)
+    for (auto& t : td)
     {
         report(&t);
     }

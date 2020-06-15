@@ -23,7 +23,7 @@ public:
     {
         m_socket->disconnect();
 
-        for (auto&& remote : m_remotes)
+        for (auto& remote : m_remotes)
         {
             remote->socket()->disconnect();
         }

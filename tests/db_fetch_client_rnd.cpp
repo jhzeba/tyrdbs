@@ -51,18 +51,18 @@ void fetch_thread(const std::string_view& uri, uint32_t seed, FILE* stats_fd)
         tests::data_parser data(response.get_parser(), response.data());
         assert((data.flags() & 0x01) == 0x01);
 
-        auto&& dbs = data.collections();
+        auto dbs = data.collections();
 
         assert(dbs.next() == true);
-        auto&& db = dbs.value();
+        auto db = dbs.value();
 
-        auto&& entries = db.entries();
+        auto entries = db.entries();
 
         std::string value;
 
         while (entries.next() == true)
         {
-            auto&& entry = entries.value();
+            auto entry = entries.value();
 
             assert(entry.key().compare(key_str) == 0);
 

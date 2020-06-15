@@ -32,9 +32,9 @@ bool fill_entries(reader* r, message::builder* builder)
 
     auto data = tests::data_builder(builder);
 
-    auto&& dbs = data.add_collections();
-    auto&& db = dbs.add_value();
-    auto&& entries = db.add_entries();
+    auto dbs = data.add_collections();
+    auto db = dbs.add_value();
+    auto entries = db.add_entries();
 
     while (true)
     {
@@ -69,7 +69,7 @@ bool fill_entries(reader* r, message::builder* builder)
             entry_flags &= ~0x01;
         }
 
-        auto&& entry = entries.add_value();
+        auto entry = entries.add_value();
 
         entry.set_flags(entry_flags);
         entry.add_key(key_str);

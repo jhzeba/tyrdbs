@@ -73,7 +73,7 @@ int main(int argc, const char* argv[])
             test_set.insert(key);
         }
 
-        for (auto&& e : it_set)
+        for (auto& e : it_set)
         {
             fprintf(fd, "%016lx\n", e);
         }
@@ -86,7 +86,7 @@ int main(int argc, const char* argv[])
     fd = fopen(cmd.get<std::string_view>("test-data").data(), "w");
     assert(fd != nullptr);
 
-    for (auto&& it : test_set)
+    for (auto& it : test_set)
     {
         fprintf(fd, "%016lx\n", it);
     }

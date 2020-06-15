@@ -151,7 +151,7 @@ std::unique_ptr<iterator> slice::range(const std::string_view& min_key, const st
         return nullptr;
     }
 
-    auto&& node = load(location);
+    auto node = load(location);
     uint16_t ndx = node->lower_bound(min_key);
 
     return std::make_unique<slice_iterator>(this, std::move(node), ndx);
@@ -165,7 +165,7 @@ std::unique_ptr<iterator> slice::begin()
     }
 
     uint64_t location = location::location(0, m_first_node_size);
-    auto&& node = load(location);
+    auto node = load(location);
 
     return std::make_unique<slice_iterator>(this, std::move(node), 0);
 }
@@ -232,7 +232,7 @@ uint64_t slice::find_node_for(uint64_t location,
 {
     while (true)
     {
-        auto&& node = load(location);
+        auto node = load(location);
         uint16_t ndx = node->lower_bound(min_key);
 
         if (ndx != node->key_count())

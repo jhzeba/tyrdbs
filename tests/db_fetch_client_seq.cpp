@@ -54,16 +54,16 @@ uint64_t calc_avg(net::socket_channel* channel, uint64_t min, uint64_t max, uint
 
         tests::data_parser data(response.get_parser(), response.data());
 
-        auto&& dbs = data.collections();
+        auto dbs = data.collections();
 
         assert(dbs.next() == true);
-        auto&& db = dbs.value();
+        auto db = dbs.value();
 
-        auto&& entries = db.entries();
+        auto entries = db.entries();
 
         while (entries.next() == true)
         {
-            auto&& entry = entries.value();
+            auto entry = entries.value();
 
             bool eor = entry.flags() & 0x0001;
             //bool deleted = entry.flags() & 0x0002;

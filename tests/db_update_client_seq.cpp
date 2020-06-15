@@ -35,9 +35,9 @@ bool fill_entries(reader* r,
 
     auto data = tests::data_builder(builder);
 
-    auto&& dbs = data.add_collections();
-    auto&& db = dbs.add_value();
-    auto&& entries = db.add_entries();
+    auto dbs = data.add_collections();
+    auto db = dbs.add_value();
+    auto entries = db.add_entries();
 
     while (true)
     {
@@ -74,7 +74,7 @@ bool fill_entries(reader* r,
 
         uint32_t ushard = (__builtin_bswap64(key) >> group_bits) & ((1UL << ushard_bits) - 1);
 
-        auto&& entry = entries.add_value();
+        auto entry = entries.add_value();
 
         entry.set_flags(entry_flags);
         entry.add_key(key_str);

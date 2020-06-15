@@ -86,7 +86,7 @@ struct impl : private disallow_copy
 
         void remove(const tyrdbs::slices_t& slices) override
         {
-            for (auto&& slice : slices)
+            for (auto& slice : slices)
             {
                 slice->unlink();
             }
@@ -114,7 +114,7 @@ struct impl : private disallow_copy
 
                 tier_locks[req.first]->insert(req.second);
 
-                auto&& ushard = ushards[req.first];
+                auto& ushard = ushards[req.first];
                 cb cb(req.first, this);
 
                 char buff[37];
@@ -172,7 +172,7 @@ struct impl : private disallow_copy
     {
         auto& w = writers[request.handle()];
 
-        for (auto&& it : w.slices)
+        for (auto& it : w.slices)
         {
             cb cb(it.first, this);
 
@@ -199,9 +199,9 @@ struct impl : private disallow_copy
     {
         if (request.has_handle() == false)
         {
-            auto&& ushard = ushards[request.ushard() % ushards.size()];
+            auto& ushard = ushards[request.ushard() % ushards.size()];
 
-            auto&& it = ushard->range(request.min_key(), request.max_key());
+            auto it = ushard->range(request.min_key(), request.max_key());
             uint64_t handle = id(it);
 
             if (it->next() == true)
@@ -323,13 +323,13 @@ private:
 
         auto data = tests::data_builder(builder);
 
-        auto&& dbs = data.add_collections();
-        auto&& db = dbs.add_value();
-        auto&& entries = db.add_entries();
+        auto dbs = data.add_collections();
+        auto db = dbs.add_value();
+        auto entries = db.add_entries();
 
         while (true)
         {
-            auto&& key = r->iterator->key();
+            auto key = r->iterator->key();
 
             uint8_t entry_flags = 0;
 
@@ -369,7 +369,7 @@ private:
                 entry_flags &= ~0x01;
             }
 
-            auto&& entry = entries.add_value();
+            auto entry = entries.add_value();
 
             entry.set_flags(entry_flags);
             entry.add_key(key);
@@ -399,21 +399,21 @@ private:
     {
         tests::data_parser data(p, off);
 
-        auto&& dbs = data.collections();
+        auto dbs = data.collections();
 
         assert(dbs.next() == true);
-        auto&& db = dbs.value();
+        auto db = dbs.value();
 
-        auto&& entries = db.entries();
+        auto entries = db.entries();
 
         while (entries.next() == true)
         {
-            auto&& entry = entries.value();
+            auto entry = entries.value();
 
             bool eor = entry.flags() & 0x01;
             bool deleted = entry.flags() & 0x02;
 
-            auto&& slice = w->slices[entry.ushard() % ushards.size()];
+            auto& slice = w->slices[entry.ushard() % ushards.size()];
 
             if (slice == nullptr)
             {
@@ -427,7 +427,7 @@ private:
         {
             auto jobs = gt::async::create_jobs();
 
-            for (auto&& slice : w->slices)
+            for (auto& slice : w->slices)
             {
                 auto f = [slice]
                 {
