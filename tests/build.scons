@@ -14,6 +14,12 @@ default_libs = [
 
 
 env.Program(
+    target='regression_0001',
+    source=['regression_0001.cpp'],
+    LIBS=default_libs
+)
+
+env.Program(
     target='generate_data',
     source=['generate_data.cpp'],
     LIBS=default_libs

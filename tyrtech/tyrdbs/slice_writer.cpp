@@ -119,6 +119,9 @@ void slice_writer::add(const std::string_view& key,
             {
                 break;
             }
+
+            m_last_key.assign(key);
+            new_key = false;
         }
 
         uint64_t location = store(&m_node, true);
@@ -126,15 +129,12 @@ void slice_writer::add(const std::string_view& key,
         if (m_first_key.size() != 0)
         {
             m_index.add(m_first_key.data(), m_last_key.data(), location);
+            m_first_key.clear();
+        }
 
-            if (new_key == true)
-            {
-                m_first_key.assign(key);
-            }
-            else
-            {
-                m_first_key.clear();
-            }
+        if (new_key == true)
+        {
+            m_first_key.assign(key);
         }
     }
 
