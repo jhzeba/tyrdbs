@@ -1,6 +1,5 @@
 #include <common/cmd_line.h>
 #include <common/cpu_sched.h>
-#include <common/uuid.h>
 #include <common/buffered_writer.h>
 #include <common/rdrnd.h>
 #include <gt/engine.h>
@@ -288,6 +287,7 @@ void verify_range(const data_set_t& data, const thread_data::ushard_t& ushard, t
     auto data_it = data.begin();
 
     std::string value;
+    value.reserve(8);
 
     while (data_it != data.end())
     {
@@ -300,6 +300,8 @@ void verify_range(const data_set_t& data, const thread_data::ushard_t& ushard, t
         {
             std::copy(slice_list.begin(), slice_list.end(), std::back_inserter(slices));
         }
+
+        value.clear();
 
         auto t1 = clock::now();
         auto db_it = tyrdbs::overwrite_iterator(key, key, slices);
@@ -314,8 +316,7 @@ void verify_range(const data_set_t& data, const thread_data::ushard_t& ushard, t
             assert(db_it.deleted() == false);
             assert(db_it.tid() != 0);
 
-            auto value_part = db_it.value();
-            value.append(value_part.data(), value_part.size());
+            value.append(db_it.value());
 
             if (db_it.eor() == true)
             {
@@ -326,8 +327,6 @@ void verify_range(const data_set_t& data, const thread_data::ushard_t& ushard, t
         }
 
         assert(key.compare(value) == 0);
-
-        value.clear();
 
         ++data_it;
 
@@ -630,13 +629,6 @@ int main(int argc, const char* argv[])
                   "file",
                   "test.data",
                   {"test data file (default test.data)"});
-
-    cmd.add_param("storage-file",
-                  nullptr,
-                  "storage-file",
-                  "file",
-                  "storage.dat",
-                  {"storage file to use (default storage.dat)"});
 
     cmd.parse(argc, argv);
 
