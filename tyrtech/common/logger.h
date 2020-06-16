@@ -32,7 +32,8 @@ void print(level level, Arguments&&... arguments)
         return;
     }
 
-    fmt::print("\033[36m[{}]\033[0m {}\n",
+    fmt::print(stderr,
+               "\033[36m[{}]\033[0m {}\n",
                level_string[static_cast<int>(level)],
                fmt::format(std::forward<Arguments>(arguments)...));
 }
