@@ -16,7 +16,7 @@ uint32_t node_writer::flush(char* sink, uint32_t sink_size)
         internal_reset();
     }
 
-    assert(likely(sink_size >= LZ4_COMPRESSBOUND(node::node_size)));
+    assert(likely(sink_size >= node::page_size + 64));
 
     *reinterpret_cast<uint16_t*>(m_data->data()) = m_key_count;
 

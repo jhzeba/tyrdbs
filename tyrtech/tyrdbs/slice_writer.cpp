@@ -266,12 +266,12 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     assert(likely(m_commited == false));
 
     using buffer_t =
-            std::array<char, node::page_size>;
+            std::array<char, node::page_size + 64>;
 
     buffer_t buffer;
 
     uint32_t size = node->flush(buffer.data(), buffer.size());
-    assert(likely(size <= node::page_size));
+    assert(likely(size <= node::page_size + 64));
 
     if (m_header.first_node_size != location::invalid_size)
     {
@@ -298,7 +298,7 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     cache::set(m_cache_id, location, m_last_node);
 
     m_header.stats.compressed_size += size;
-    m_header.stats.uncompressed_size += node::node_size;
+    m_header.stats.uncompressed_size += node::page_size;
 
     m_header.stats.total_nodes++;
     m_header.stats.leaf_nodes += is_leaf;

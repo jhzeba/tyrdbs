@@ -15,7 +15,6 @@ class node : private disallow_copy, disallow_move
 {
 public:
     static constexpr uint32_t page_size{8192};
-    static constexpr uint32_t node_size{(page_size - 32) * 255 / 256};
     static constexpr uint32_t max_key_size{1024};
 
 public:
@@ -58,7 +57,7 @@ private:
 
 private:
     using data_t =
-            std::array<char, node_size>;
+            std::array<char, page_size>;
 
 private:
     data_t m_data;

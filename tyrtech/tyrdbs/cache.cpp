@@ -84,10 +84,10 @@ node_ptr load(reader* reader, uint64_t location)
     uint64_t node_offset = location::offset(location);
     uint16_t node_size = location::size(location);
 
-    assert(likely(node_size <= node::page_size));
+    assert(likely(node_size <= node::page_size + 64));
 
     using buffer_t =
-            std::array<char, node::page_size>;
+            std::array<char, node::page_size + 128>;
 
     buffer_t buffer;
     char* data = buffer.data();

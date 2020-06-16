@@ -18,7 +18,7 @@ void node::load(const char* source, uint32_t source_size)
                                     source_size,
                                     m_data.size());
 
-    if (r != static_cast<int32_t>(m_data.size()))
+    if (r != page_size)
     {
         throw runtime_error_exception("unable to decompress node");
     }
