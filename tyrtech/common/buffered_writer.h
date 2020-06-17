@@ -63,7 +63,12 @@ public:
             return;
         }
 
-        m_sink->write(m_buffer->data(), m_offset);
+        auto res = m_sink->write(m_buffer->data(), m_offset);
+
+        if (unlikely(res != m_offset))
+        {
+            throw exception("cannot write data to sink");
+        }
 
         m_offset = 0;
     }
