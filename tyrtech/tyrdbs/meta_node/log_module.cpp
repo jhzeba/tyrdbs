@@ -5,7 +5,6 @@
 #include <io/file.h>
 #include <net/rpc_response.h>
 #include <tyrdbs/writer.h>
-#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 
 
@@ -162,7 +161,88 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 
     response.send();
 
-    // send keys
+    suspend_writers();
+
+    try
+    {
+        if (request.has_ushard_id() == true)
+        {
+            uint16_t ushard_id = request.ushard_id() % m_ushards.size();
+
+            auto slices = m_ushards[ushard_id].get();
+
+            if (request.has_min_key() == true && request.has_max_key() == true)
+            {
+                auto it = overwrite_iterator(request.min_key(), request.max_key(), std::move(slices));
+                send_keys(ushard_id, &it, ctx->channel);
+            }
+            else
+            {
+                auto it = overwrite_iterator(std::move(slices));
+                send_keys(ushard_id, &it, ctx->channel);
+            }
+        }
+        else
+        {
+            for (uint16_t ushard_id = 0; ushard_id < m_ushards.size(); ushard_id++)
+            {
+                auto slices = m_ushards[ushard_id].get();
+
+                if (request.has_min_key() == true && request.has_max_key() == true)
+                {
+                    auto it = overwrite_iterator(request.min_key(), request.max_key(), std::move(slices));
+                    send_keys(ushard_id, &it, ctx->channel);
+                }
+                else
+                {
+                    auto it = overwrite_iterator(std::move(slices));
+                    send_keys(ushard_id, &it, ctx->channel);
+                }
+            }
+        }
+    }
+    catch (...)
+    {
+        resume_writers();
+
+        throw;
+    }
+
+    transaction_log_t transaction_log;
+    register_transaction_log(&transaction_log);
+
+    resume_writers();
+
+    try
+    {
+        m_transaction_log_condition.wait();
+        assert(transaction_log.empty() == false);
+
+        auto transaction = transaction_log.pop();
+
+        auto tid = std::get<0>(transaction);
+        auto& blocks = std::get<1>(transaction);
+
+        net::rpc_response<log::fetch> response(ctx->channel);
+        auto message = response.add_message();
+
+        message.add_tid(tid);
+
+        response.send();
+
+        for (auto& block : *blocks)
+        {
+            ctx->channel->write(block.data(), block.size());
+        }
+
+        unregister_transaction_log();
+    }
+    catch (...)
+    {
+        unregister_transaction_log();
+
+        throw;
+    }
 }
 
 void impl::update(const update::request_parser_t& request, context* ctx)
@@ -172,63 +252,49 @@ void impl::update(const update::request_parser_t& request, context* ctx)
         m_slice_count_cond.wait();
     }
 
-    auto writers = load_writers(ctx->channel);
-    slices_t slices;
+    auto transaction = process_transaction(ctx->channel);
 
-    auto jobs = gt::async::create_jobs();
+    register_writer();
 
-    for (auto& it : writers)
+    try
     {
-        auto f = [&slices,
-                  &writer = it.second,
-                  ushard_id = it.first]
+        auto tid = m_next_tid++;
+
+        for (auto& it : std::get<0>(transaction))
         {
-            writer->flush();
-            writer->commit();
+            auto ushard_id = it.first % m_ushards.size();
+            auto& ushard = m_ushards[ushard_id];
 
-            file_writer* fw = static_cast<file_writer*>(writer->writer());
+            auto& slice = it.second;
+            slice->set_tid(tid);
 
-            auto reader = std::make_shared<file_reader>(fw->path());
-            auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
-                                                         writer->cache_id(),
-                                                         std::move(reader));
+            auto tier_id = ushard::tier_id_of(slice->key_count());
 
-            slices[ushard_id] = std::move(slice);
-        };
+            if (ushard.add(tier_id, std::move(slice)) == true)
+            {
+                request_merge_if_needed(ushard_id, tier_id);
+            }
 
-        jobs.run(std::move(f));
-    }
-
-    jobs.wait();
-
-    writers.clear();
-
-    auto tid = m_next_tid++;
-
-    for (auto& it : slices)
-    {
-        auto ushard_id = it.first % m_ushards.size();
-        auto& ushard = m_ushards[ushard_id];
-
-        auto& slice = it.second;
-        slice->set_tid(tid);
-
-        auto tier_id = ushard::tier_id_of(slice->key_count());
-
-        if (ushard.add(tier_id, std::move(slice)) == true)
-        {
-            request_merge_if_needed(ushard_id, tier_id);
+            m_slice_count++;
         }
 
-        m_slice_count++;
+        push_transaction(tid, std::move(std::get<1>(transaction)));
+
+        unregister_writer();
+
+        net::rpc_response<log::update> response(ctx->channel);
+        auto message = response.add_message();
+
+        message.set_tid(tid);
+
+        response.send();
     }
+    catch (...)
+    {
+        unregister_writer();
 
-    net::rpc_response<log::update> response(ctx->channel);
-    auto message = response.add_message();
-
-    message.set_tid(tid);
-
-    response.send();
+        throw;
+    }
 }
 
 void impl::merge(uint32_t merge_id)
@@ -401,8 +467,15 @@ bool impl::load_block(const block_parser& block, writers_t* writers)
     return is_last_block;
 }
 
-impl::writers_t impl::load_writers(net::socket_channel* channel)
+impl::transaction_t impl::process_transaction(net::socket_channel* channel)
 {
+    transaction_t transaction;
+
+    auto& slices = std::get<0>(transaction);
+    auto& blocks = std::get<1>(transaction);
+
+    blocks = std::make_shared<blocks_t>();
+
     writers_t writers;
 
     bool is_last_block = false;
@@ -424,11 +497,42 @@ impl::writers_t impl::load_writers(net::socket_channel* channel)
 
         channel->read(buffer.data() + sizeof(uint16_t), *size);
 
+        auto db = dynamic_buffer(*size + sizeof(uint16_t));
+        memcpy(db.data(), buffer.data(), db.size());
+
+        blocks->emplace_back(std::move(db));
+
         message::parser parser(buffer.data(), *size + sizeof(uint16_t));
         is_last_block = load_block(block_parser(&parser, 0), &writers);
     }
 
-    return writers;
+    auto jobs = gt::async::create_jobs();
+
+    for (auto& it : writers)
+    {
+        auto f = [&slices,
+                  &writer = it.second,
+                  ushard_id = it.first]
+        {
+            writer->flush();
+            writer->commit();
+
+            file_writer* fw = static_cast<file_writer*>(writer->writer());
+
+            auto reader = std::make_shared<file_reader>(fw->path());
+            auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
+                                                         writer->cache_id(),
+                                                         std::move(reader));
+
+            slices[ushard_id] = std::move(slice);
+        };
+
+        jobs.run(std::move(f));
+    }
+
+    jobs.wait();
+
+    return transaction;
 }
 
 void impl::print_rate()
@@ -459,6 +563,125 @@ void impl::print_rate()
         last_merged_keys = m_merged_keys;
         last_merged_size = m_merged_size;
     }
+}
+
+void impl::register_writer()
+{
+    while (m_suspend_count != 0)
+    {
+        m_suspend_condition.wait();
+    }
+
+    m_writer_count++;
+}
+
+void impl::unregister_writer()
+{
+    m_writer_count--;
+
+    if (m_writer_count == 0 &&
+        m_suspend_count != 0)
+    {
+        m_writer_condition.signal_all();
+    }
+}
+
+void impl::suspend_writers()
+{
+    m_suspend_count++;
+
+    while (m_writer_count != 0)
+    {
+        m_writer_condition.wait();
+    }
+}
+
+void impl::resume_writers()
+{
+    m_suspend_count--;
+
+    if (m_suspend_count == 0)
+    {
+        m_suspend_condition.signal_all();
+    }
+}
+
+void impl::register_transaction_log(transaction_log_t* transaction_log)
+{
+    auto it = m_transaction_log_map.find(gt::current_context());
+    assert(it == m_transaction_log_map.end());
+
+    m_transaction_log_map[gt::current_context()] = transaction_log;
+}
+
+void impl::unregister_transaction_log()
+{
+    auto it = m_transaction_log_map.find(gt::current_context());
+    assert(it != m_transaction_log_map.end());
+
+    m_transaction_log_map.erase(it);
+}
+
+void impl::push_transaction(uint64_t tid, blocks_ptr blocks)
+{
+    for (auto& it : m_transaction_log_map)
+    {
+        auto& transaction_log = it.second;
+        transaction_log->push(std::make_tuple(tid, blocks));
+    }
+
+    m_transaction_log_condition.signal_all();
+}
+
+void impl::send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_channel* channel)
+{
+    using buffer_t =
+            std::array<char, net::socket_channel::buffer_size>;
+
+    buffer_t buffer;
+
+    auto builder = message::builder(buffer.data(), buffer.size());
+    auto block = tyrdbs::meta_node::block_builder(&builder);
+
+    auto entries = block.add_entries();
+
+    while (it->next() == true)
+    {
+        uint32_t bytes_required = 0;
+
+        bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::value_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::tid_bytes_required();
+        bytes_required += it->key().size();
+        bytes_required += it->value().size();
+
+        if (bytes_required > builder.available_space())
+        {
+            block.finalize();
+
+            channel->write(buffer.data(), builder.size());
+
+            builder = message::builder(buffer.data(), buffer.size());
+            block = tyrdbs::meta_node::block_builder(&builder);
+
+            entries = block.add_entries();
+        }
+
+        auto entry = entries.add_value();
+
+        entry.set_flags(0x01);
+        entry.set_ushard_id(ushard_id);
+        entry.add_tid(it->tid());
+        entry.add_key(it->key());
+        entry.add_value(it->value());
+    }
+
+    block.set_flags(1);
+    block.finalize();
+
+    channel->write(buffer.data(), builder.size());
+    channel->flush();
 }
 
 impl::impl(const std::string_view& path,

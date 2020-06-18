@@ -5,6 +5,7 @@
         {
             "ushard_id": "uint16#",
             "flags": "uint8#",
+            "tid": "uint64",
             "key": "string",
             "value": "string"
         },

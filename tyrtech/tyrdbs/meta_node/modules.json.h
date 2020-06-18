@@ -12,15 +12,53 @@ namespace tyrtech::tyrdbs::meta_node::log {
 namespace messages::fetch {
 
 
-struct request_builder final : public tyrtech::message::struct_builder<0, 0>
+struct request_builder final : public tyrtech::message::struct_builder<3, 1>
 {
     request_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
+
+    void set_one_shot(uint8_t value)
+    {
+        *reinterpret_cast<uint8_t*>(m_static + 0) = value;
+    }
+
+    void add_ushard_id(const uint16_t& value)
+    {
+        set_offset<0>();
+        struct_builder<3, 1>::add_value(value);
+    }
+
+    static constexpr uint16_t ushard_id_bytes_required()
+    {
+        return tyrtech::message::element<uint16_t>::size;
+    }
+
+    void add_min_key(const std::string_view& value)
+    {
+        set_offset<1>();
+        struct_builder<3, 1>::add_value(value);
+    }
+
+    static constexpr uint16_t min_key_bytes_required()
+    {
+        return tyrtech::message::element<std::string_view>::size;
+    }
+
+    void add_max_key(const std::string_view& value)
+    {
+        set_offset<2>();
+        struct_builder<3, 1>::add_value(value);
+    }
+
+    static constexpr uint16_t max_key_bytes_required()
+    {
+        return tyrtech::message::element<std::string_view>::size;
+    }
 };
 
-struct request_parser final : public tyrtech::message::struct_parser<0, 0>
+struct request_parser final : public tyrtech::message::struct_parser<3, 1>
 {
     request_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -28,17 +66,63 @@ struct request_parser final : public tyrtech::message::struct_parser<0, 0>
     }
 
     request_parser() = default;
+
+    decltype(auto) one_shot() const
+    {
+        return *reinterpret_cast<const uint8_t*>(m_static + 0);
+    }
+
+    bool has_ushard_id() const
+    {
+        return has_offset<0>();
+    }
+
+    decltype(auto) ushard_id() const
+    {
+        return tyrtech::message::element<uint16_t>().parse(m_parser, offset<0>());
+    }
+
+    bool has_min_key() const
+    {
+        return has_offset<1>();
+    }
+
+    decltype(auto) min_key() const
+    {
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<1>());
+    }
+
+    bool has_max_key() const
+    {
+        return has_offset<2>();
+    }
+
+    decltype(auto) max_key() const
+    {
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<2>());
+    }
 };
 
-struct response_builder final : public tyrtech::message::struct_builder<0, 0>
+struct response_builder final : public tyrtech::message::struct_builder<1, 0>
 {
     response_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
+
+    void add_tid(const uint64_t& value)
+    {
+        set_offset<0>();
+        struct_builder<1, 0>::add_value(value);
+    }
+
+    static constexpr uint16_t tid_bytes_required()
+    {
+        return tyrtech::message::element<uint64_t>::size;
+    }
 };
 
-struct response_parser final : public tyrtech::message::struct_parser<0, 0>
+struct response_parser final : public tyrtech::message::struct_parser<1, 0>
 {
     response_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -46,6 +130,16 @@ struct response_parser final : public tyrtech::message::struct_parser<0, 0>
     }
 
     response_parser() = default;
+
+    bool has_tid() const
+    {
+        return has_offset<0>();
+    }
+
+    decltype(auto) tid() const
+    {
+        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
+    }
 };
 
 }

@@ -1,8 +1,11 @@
 #pragma once
 
 
+#include <common/dynamic_buffer.h>
+#include <common/ring_queue.h>
 #include <gt/condition.h>
 #include <tyrdbs/slice_writer.h>
+#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/ushard.h>
 #include <tyrdbs/meta_node/modules.json.h>
 #include <tyrdbs/meta_node/block.json.h>
@@ -58,6 +61,21 @@ private:
     using slices_t =
             std::unordered_map<uint16_t, slice_ptr>;
 
+    using blocks_t =
+            std::vector<dynamic_buffer>;
+
+    using blocks_ptr =
+            std::shared_ptr<blocks_t>;
+
+    using transaction_t =
+            std::tuple<slices_t, blocks_ptr>;
+
+    using transaction_log_t =
+            ring_queue<std::tuple<uint64_t, blocks_ptr>>;
+
+    using transaction_log_map_t =
+            std::unordered_map<gt::context_t, transaction_log_t*>;
+
 private:
     std::string_view m_path;
 
@@ -78,9 +96,18 @@ private:
 
     ushards_t m_ushards;
 
+    transaction_log_map_t m_transaction_log_map;
+    gt::condition m_transaction_log_condition;
+
+    uint32_t m_suspend_count{0};
+    gt::condition m_suspend_condition;
+
+    uint32_t m_writer_count{0};
+    gt::condition m_writer_condition;
+
 private:
     bool load_block(const block_parser& block, writers_t* writers);
-    writers_t load_writers(net::socket_channel* channel);
+    transaction_t process_transaction(net::socket_channel* channel);
 
     uint32_t merge_id_from(uint16_t ushard_id, uint8_t tier_id);
     void request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id);
@@ -89,6 +116,19 @@ private:
     void merge_thread();
 
     void print_rate();
+
+    void register_writer();
+    void unregister_writer();
+
+    void suspend_writers();
+    void resume_writers();
+
+    void register_transaction_log(transaction_log_t* transaction_log);
+    void unregister_transaction_log();
+
+    void push_transaction(uint64_t tid, blocks_ptr blocks);
+
+    void send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_channel* channel);
 };
 
 }
