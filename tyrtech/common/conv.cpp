@@ -8,6 +8,21 @@ namespace tyrtech::conv {
 
 
 template<>
+int32_t parse(const std::string_view& value)
+{
+    int32_t parsed_value;
+
+    auto res = std::from_chars(value.begin(), value.end(), parsed_value);
+
+    if (unlikely(res.ptr != value.end() || res.ec != std::errc()))
+    {
+        throw format_error_exception("can't convert '{}' to i32", value);
+    }
+
+    return parsed_value;
+}
+
+template<>
 uint16_t parse(const std::string_view& value)
 {
     uint16_t parsed_value;

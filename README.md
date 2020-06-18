@@ -61,7 +61,7 @@ Mandatory arguments to long options are mandatory for short options too.
       --help                display this help and exit
       --network-queue-depth=num
                             network queue depth to use (default is 512)
-      --cpu=index           cpu index to run the program on (default is 0)
+      --cpu=index           cpu index to run the program on (default is -1)
       --threads=num         number of threads to use (default is 32)
       --iterations=num      number of iterations per thread to do (default is
                               10000)

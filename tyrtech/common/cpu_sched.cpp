@@ -10,6 +10,11 @@ namespace tyrtech {
 
 void set_cpu(int32_t cpu)
 {
+    if (cpu == -1)
+    {
+        return;
+    }
+
     cpu_set_t cpu_set;
 
     CPU_ZERO(&cpu_set);

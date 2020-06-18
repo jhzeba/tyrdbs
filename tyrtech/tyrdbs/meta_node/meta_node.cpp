@@ -72,8 +72,8 @@ int main(int argc, const char* argv[])
                   nullptr,
                   "cpu",
                   "index",
-                  "0",
-                  {"cpu index to run the program on (default is 0)"});
+                  "-1",
+                  {"cpu index to run the program on (default is -1)"});
 
     cmd.add_param("merge-threads",
                   nullptr,
@@ -123,7 +123,7 @@ int main(int argc, const char* argv[])
             throw runtime_error_exception("cpu doesn't support crc32c instruction");
         }
 
-        set_cpu(cmd.get<uint32_t>("cpu"));
+        set_cpu(cmd.get<int32_t>("cpu"));
 
         gt::initialize();
         gt::async::initialize();

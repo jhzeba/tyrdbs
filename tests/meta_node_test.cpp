@@ -170,8 +170,8 @@ int main(int argc, const char* argv[])
                   nullptr,
                   "cpu",
                   "index",
-                  "0",
-                  {"cpu index to run the program on (default is 0)"});
+                  "-1",
+                  {"cpu index to run the program on (default is -1)"});
 
     cmd.add_param("iterations",
                   nullptr,
@@ -207,7 +207,7 @@ int main(int argc, const char* argv[])
 
     cmd.parse(argc, argv);
 
-    set_cpu(cmd.get<uint32_t>("cpu"));
+    set_cpu(cmd.get<int32_t>("cpu"));
 
     if (crc32c_initialize() == false)
     {
