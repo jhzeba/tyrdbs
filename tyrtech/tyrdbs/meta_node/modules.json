@@ -10,10 +10,7 @@
                 "id": 1,
                 "request":
                 {
-                    "one_shot": "uint8#",
-                    "ushard_id": "uint16",
-                    "min_key": "string",
-                    "max_key": "string"
+                    "one_shot": "uint8#"
                 },
                 "response":
                 {

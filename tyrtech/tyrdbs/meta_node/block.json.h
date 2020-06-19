@@ -8,27 +8,33 @@
 namespace tyrtech::tyrdbs::meta_node {
 
 
-struct entry_builder final : public tyrtech::message::struct_builder<3, 3>
+struct entry_builder final : public tyrtech::message::struct_builder<4, 1>
 {
     entry_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
-    void set_ushard_id(uint16_t value)
-    {
-        *reinterpret_cast<uint16_t*>(m_static + 0) = value;
-    }
-
     void set_flags(uint8_t value)
     {
-        *reinterpret_cast<uint8_t*>(m_static + 2) = value;
+        *reinterpret_cast<uint8_t*>(m_static + 0) = value;
+    }
+
+    void add_ushard_id(const uint16_t& value)
+    {
+        set_offset<0>();
+        struct_builder<4, 1>::add_value(value);
+    }
+
+    static constexpr uint16_t ushard_id_bytes_required()
+    {
+        return tyrtech::message::element<uint16_t>::size;
     }
 
     void add_tid(const uint64_t& value)
     {
-        set_offset<0>();
-        struct_builder<3, 3>::add_value(value);
+        set_offset<1>();
+        struct_builder<4, 1>::add_value(value);
     }
 
     static constexpr uint16_t tid_bytes_required()
@@ -38,8 +44,8 @@ struct entry_builder final : public tyrtech::message::struct_builder<3, 3>
 
     void add_key(const std::string_view& value)
     {
-        set_offset<1>();
-        struct_builder<3, 3>::add_value(value);
+        set_offset<2>();
+        struct_builder<4, 1>::add_value(value);
     }
 
     static constexpr uint16_t key_bytes_required()
@@ -49,8 +55,8 @@ struct entry_builder final : public tyrtech::message::struct_builder<3, 3>
 
     void add_value(const std::string_view& value)
     {
-        set_offset<2>();
-        struct_builder<3, 3>::add_value(value);
+        set_offset<3>();
+        struct_builder<4, 1>::add_value(value);
     }
 
     static constexpr uint16_t value_bytes_required()
@@ -59,7 +65,7 @@ struct entry_builder final : public tyrtech::message::struct_builder<3, 3>
     }
 };
 
-struct entry_parser final : public tyrtech::message::struct_parser<3, 3>
+struct entry_parser final : public tyrtech::message::struct_parser<4, 1>
 {
     entry_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -68,44 +74,49 @@ struct entry_parser final : public tyrtech::message::struct_parser<3, 3>
 
     entry_parser() = default;
 
-    decltype(auto) ushard_id() const
-    {
-        return *reinterpret_cast<const uint16_t*>(m_static + 0);
-    }
-
     decltype(auto) flags() const
     {
-        return *reinterpret_cast<const uint8_t*>(m_static + 2);
+        return *reinterpret_cast<const uint8_t*>(m_static + 0);
     }
 
-    bool has_tid() const
+    bool has_ushard_id() const
     {
         return has_offset<0>();
     }
 
-    decltype(auto) tid() const
+    decltype(auto) ushard_id() const
     {
-        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<0>());
+        return tyrtech::message::element<uint16_t>().parse(m_parser, offset<0>());
     }
 
-    bool has_key() const
+    bool has_tid() const
     {
         return has_offset<1>();
     }
 
-    decltype(auto) key() const
+    decltype(auto) tid() const
     {
-        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<1>());
+        return tyrtech::message::element<uint64_t>().parse(m_parser, offset<1>());
     }
 
-    bool has_value() const
+    bool has_key() const
     {
         return has_offset<2>();
     }
 
-    decltype(auto) value() const
+    decltype(auto) key() const
     {
         return tyrtech::message::element<std::string_view>().parse(m_parser, offset<2>());
+    }
+
+    bool has_value() const
+    {
+        return has_offset<3>();
+    }
+
+    decltype(auto) value() const
+    {
+        return tyrtech::message::element<std::string_view>().parse(m_parser, offset<3>());
     }
 };
 

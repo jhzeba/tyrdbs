@@ -5,6 +5,7 @@
 #include <io/file.h>
 #include <net/rpc_response.h>
 #include <tyrdbs/writer.h>
+#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/log_module.h>
 
 
@@ -165,40 +166,10 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 
     try
     {
-        if (request.has_ushard_id() == true)
+        for (uint16_t ushard_id = 0; ushard_id < m_ushards.size(); ushard_id++)
         {
-            uint16_t ushard_id = request.ushard_id() % m_ushards.size();
-
             auto slices = m_ushards[ushard_id].get();
-
-            if (request.has_min_key() == true && request.has_max_key() == true)
-            {
-                auto it = overwrite_iterator(request.min_key(), request.max_key(), std::move(slices));
-                send_keys(ushard_id, &it, ctx->channel);
-            }
-            else
-            {
-                auto it = overwrite_iterator(std::move(slices));
-                send_keys(ushard_id, &it, ctx->channel);
-            }
-        }
-        else
-        {
-            for (uint16_t ushard_id = 0; ushard_id < m_ushards.size(); ushard_id++)
-            {
-                auto slices = m_ushards[ushard_id].get();
-
-                if (request.has_min_key() == true && request.has_max_key() == true)
-                {
-                    auto it = overwrite_iterator(request.min_key(), request.max_key(), std::move(slices));
-                    send_keys(ushard_id, &it, ctx->channel);
-                }
-                else
-                {
-                    auto it = overwrite_iterator(std::move(slices));
-                    send_keys(ushard_id, &it, ctx->channel);
-                }
-            }
+            send_keys(std::move(slices), ctx->channel);
         }
     }
     catch (...)
@@ -215,27 +186,28 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 
     try
     {
-        m_transaction_log_condition.wait();
-        assert(transaction_log.empty() == false);
-
-        auto transaction = transaction_log.pop();
-
-        auto tid = std::get<0>(transaction);
-        auto& blocks = std::get<1>(transaction);
-
-        net::rpc_response<log::fetch> response(ctx->channel);
-        auto message = response.add_message();
-
-        message.add_tid(tid);
-
-        response.send();
-
-        for (auto& block : *blocks)
+        while (true)
         {
-            ctx->channel->write(block.data(), block.size());
-        }
+            m_transaction_log_condition.wait();
+            assert(transaction_log.empty() == false);
 
-        unregister_transaction_log();
+            auto transaction = transaction_log.pop();
+
+            auto tid = std::get<0>(transaction);
+            auto& blocks = std::get<1>(transaction);
+
+            net::rpc_response<log::fetch> response(ctx->channel);
+            auto message = response.add_message();
+
+            message.add_tid(tid);
+
+            response.send();
+
+            for (auto& block : *blocks)
+            {
+                ctx->channel->write(block.data(), block.size());
+            }
+        }
     }
     catch (...)
     {
@@ -243,6 +215,8 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 
         throw;
     }
+
+    unregister_transaction_log();
 }
 
 void impl::update(const update::request_parser_t& request, context* ctx)
@@ -256,45 +230,36 @@ void impl::update(const update::request_parser_t& request, context* ctx)
 
     register_writer();
 
-    try
+    auto tid = m_next_tid++;
+
+    for (auto& it : std::get<0>(transaction))
     {
-        auto tid = m_next_tid++;
+        auto ushard_id = it.first % m_ushards.size();
+        auto& ushard = m_ushards[ushard_id];
 
-        for (auto& it : std::get<0>(transaction))
+        auto& slice = it.second;
+        slice->set_tid(tid);
+
+        auto tier_id = ushard::tier_id_of(slice->key_count());
+
+        if (ushard.add(tier_id, std::move(slice)) == true)
         {
-            auto ushard_id = it.first % m_ushards.size();
-            auto& ushard = m_ushards[ushard_id];
-
-            auto& slice = it.second;
-            slice->set_tid(tid);
-
-            auto tier_id = ushard::tier_id_of(slice->key_count());
-
-            if (ushard.add(tier_id, std::move(slice)) == true)
-            {
-                request_merge_if_needed(ushard_id, tier_id);
-            }
-
-            m_slice_count++;
+            request_merge_if_needed(ushard_id, tier_id);
         }
 
-        push_transaction(tid, std::move(std::get<1>(transaction)));
-
-        unregister_writer();
-
-        net::rpc_response<log::update> response(ctx->channel);
-        auto message = response.add_message();
-
-        message.set_tid(tid);
-
-        response.send();
+        m_slice_count++;
     }
-    catch (...)
-    {
-        unregister_writer();
 
-        throw;
-    }
+    push_transaction(tid, std::move(std::get<1>(transaction)));
+
+    unregister_writer();
+
+    net::rpc_response<log::update> response(ctx->channel);
+    auto message = response.add_message();
+
+    message.set_tid(tid);
+
+    response.send();
 }
 
 void impl::merge(uint32_t merge_id)
@@ -447,6 +412,11 @@ bool impl::load_block(const block_parser& block, writers_t* writers)
             value = entry.value();
         }
 
+        if (entry.has_ushard_id() == false)
+        {
+            throw invalid_request_exception("ushard_id missing");
+        }
+
         auto ushard_id = entry.ushard_id();
         auto flags = entry.flags();
 
@@ -492,7 +462,7 @@ impl::transaction_t impl::process_transaction(net::socket_channel* channel)
 
         if (unlikely(*size > net::socket_channel::buffer_size - sizeof(uint16_t)))
         {
-            throw invalid_request_exception("merge results block too big");
+            throw invalid_request_exception("block too big");
         }
 
         channel->read(buffer.data() + sizeof(uint16_t), *size);
@@ -633,7 +603,7 @@ void impl::push_transaction(uint64_t tid, blocks_ptr blocks)
     m_transaction_log_condition.signal_all();
 }
 
-void impl::send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_channel* channel)
+void impl::send_keys(tyrdbs::slices_t slices, net::socket_channel* channel)
 {
     using buffer_t =
             std::array<char, net::socket_channel::buffer_size>;
@@ -645,7 +615,9 @@ void impl::send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_cha
 
     auto entries = block.add_entries();
 
-    while (it->next() == true)
+    auto it = overwrite_iterator(std::move(slices));
+
+    while (it.next() == true)
     {
         uint32_t bytes_required = 0;
 
@@ -653,8 +625,8 @@ void impl::send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_cha
         bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
         bytes_required += tyrdbs::meta_node::entry_builder::value_bytes_required();
         bytes_required += tyrdbs::meta_node::entry_builder::tid_bytes_required();
-        bytes_required += it->key().size();
-        bytes_required += it->value().size();
+        bytes_required += it.key().size();
+        bytes_required += it.value().size();
 
         if (bytes_required > builder.available_space())
         {
@@ -671,10 +643,9 @@ void impl::send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_cha
         auto entry = entries.add_value();
 
         entry.set_flags(0x01);
-        entry.set_ushard_id(ushard_id);
-        entry.add_tid(it->tid());
-        entry.add_key(it->key());
-        entry.add_value(it->value());
+        entry.add_tid(it.tid());
+        entry.add_key(it.key());
+        entry.add_value(it.value());
     }
 
     block.set_flags(1);

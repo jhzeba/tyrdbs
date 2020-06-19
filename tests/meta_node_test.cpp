@@ -65,7 +65,7 @@ void update_iteration(const std::set<uint64_t>& keys, uint32_t iteration, net::s
         auto entry = entries.add_value();
 
         entry.set_flags(0x01);
-        entry.set_ushard_id(iteration);
+        entry.add_ushard_id(iteration);
         entry.add_key(key_str);
         entry.add_value(key_str);
     }

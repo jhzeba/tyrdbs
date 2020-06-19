@@ -3,8 +3,8 @@
     {
         "entry":
         {
-            "ushard_id": "uint16#",
             "flags": "uint8#",
+            "ushard_id": "uint16",
             "tid": "uint64",
             "key": "string",
             "value": "string"

@@ -5,7 +5,6 @@
 #include <common/ring_queue.h>
 #include <gt/condition.h>
 #include <tyrdbs/slice_writer.h>
-#include <tyrdbs/overwrite_iterator.h>
 #include <tyrdbs/meta_node/ushard.h>
 #include <tyrdbs/meta_node/modules.json.h>
 #include <tyrdbs/meta_node/block.json.h>
@@ -128,7 +127,7 @@ private:
 
     void push_transaction(uint64_t tid, blocks_ptr blocks);
 
-    void send_keys(uint16_t ushard_id, overwrite_iterator* it, net::socket_channel* channel);
+    void send_keys(tyrdbs::slices_t slices, net::socket_channel* channel);
 };
 
 }
