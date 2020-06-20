@@ -157,26 +157,36 @@ impl::context impl::create_context(net::socket_channel* channel)
 
 void impl::fetch(const fetch::request_parser_t& request, context* ctx)
 {
-    net::rpc_response<log::fetch> response(ctx->channel);
-    auto message = response.add_message();
-
-    response.send();
-
     suspend_writers();
 
     try
     {
         for (uint16_t ushard_id = 0; ushard_id < m_ushards.size(); ushard_id++)
         {
-            auto slices = m_ushards[ushard_id].get();
-            send_keys(std::move(slices), ctx->channel);
+            net::rpc_response<log::fetch> response(ctx->channel);
+            auto message = response.add_message();
+
+            message.set_last_segment(ushard_id == m_ushards.size() - 1);
+
+            response.send();
+
+            send_keys(ushard_id, ctx->channel);
         }
+
+        ctx->channel->flush();
     }
     catch (...)
     {
         resume_writers();
 
         throw;
+    }
+
+    if (request.one_shot() != 0)
+    {
+        resume_writers();
+
+        return;
     }
 
     transaction_log_t transaction_log;
@@ -199,6 +209,7 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
             net::rpc_response<log::fetch> response(ctx->channel);
             auto message = response.add_message();
 
+            message.set_last_segment(1);
             message.add_tid(tid);
 
             response.send();
@@ -207,6 +218,8 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
             {
                 ctx->channel->write(block.data(), block.size());
             }
+
+            ctx->channel->flush();
         }
     }
     catch (...)
@@ -603,7 +616,7 @@ void impl::push_transaction(uint64_t tid, blocks_ptr blocks)
     m_transaction_log_condition.signal_all();
 }
 
-void impl::send_keys(tyrdbs::slices_t slices, net::socket_channel* channel)
+void impl::send_keys(uint16_t ushard_id, net::socket_channel* channel)
 {
     using buffer_t =
             std::array<char, net::socket_channel::buffer_size>;
@@ -615,6 +628,7 @@ void impl::send_keys(tyrdbs::slices_t slices, net::socket_channel* channel)
 
     auto entries = block.add_entries();
 
+    auto slices = m_ushards[ushard_id].get();
     auto it = overwrite_iterator(std::move(slices));
 
     while (it.next() == true)
@@ -652,7 +666,6 @@ void impl::send_keys(tyrdbs::slices_t slices, net::socket_channel* channel)
     block.finalize();
 
     channel->write(buffer.data(), builder.size());
-    channel->flush();
 }
 
 impl::impl(const std::string_view& path,

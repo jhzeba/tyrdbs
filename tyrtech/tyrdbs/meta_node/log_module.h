@@ -127,7 +127,7 @@ private:
 
     void push_transaction(uint64_t tid, blocks_ptr blocks);
 
-    void send_keys(tyrdbs::slices_t slices, net::socket_channel* channel);
+    void send_keys(uint16_t ushard_id, net::socket_channel* channel);
 };
 
 }

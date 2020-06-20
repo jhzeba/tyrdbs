@@ -40,17 +40,22 @@ struct request_parser final : public tyrtech::message::struct_parser<0, 1>
     }
 };
 
-struct response_builder final : public tyrtech::message::struct_builder<1, 0>
+struct response_builder final : public tyrtech::message::struct_builder<1, 1>
 {
     response_builder(tyrtech::message::builder* builder)
       : struct_builder(builder)
     {
     }
 
+    void set_last_segment(uint8_t value)
+    {
+        *reinterpret_cast<uint8_t*>(m_static + 0) = value;
+    }
+
     void add_tid(const uint64_t& value)
     {
         set_offset<0>();
-        struct_builder<1, 0>::add_value(value);
+        struct_builder<1, 1>::add_value(value);
     }
 
     static constexpr uint16_t tid_bytes_required()
@@ -59,7 +64,7 @@ struct response_builder final : public tyrtech::message::struct_builder<1, 0>
     }
 };
 
-struct response_parser final : public tyrtech::message::struct_parser<1, 0>
+struct response_parser final : public tyrtech::message::struct_parser<1, 1>
 {
     response_parser(const tyrtech::message::parser* parser, uint16_t offset)
       : struct_parser(parser, offset)
@@ -67,6 +72,11 @@ struct response_parser final : public tyrtech::message::struct_parser<1, 0>
     }
 
     response_parser() = default;
+
+    decltype(auto) last_segment() const
+    {
+        return *reinterpret_cast<const uint8_t*>(m_static + 0);
+    }
 
     bool has_tid() const
     {
