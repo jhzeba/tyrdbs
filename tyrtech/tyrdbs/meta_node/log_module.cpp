@@ -636,6 +636,7 @@ void impl::send_keys(uint16_t ushard_id, net::socket_channel* channel)
         uint32_t bytes_required = 0;
 
         bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
+        bytes_required += tyrdbs::meta_node::entry_builder::bytes_required();
         bytes_required += tyrdbs::meta_node::entry_builder::key_bytes_required();
         bytes_required += tyrdbs::meta_node::entry_builder::value_bytes_required();
         bytes_required += tyrdbs::meta_node::entry_builder::tid_bytes_required();
