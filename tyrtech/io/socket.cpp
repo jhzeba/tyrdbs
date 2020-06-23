@@ -44,6 +44,7 @@ uint32_t socket::recv(char* data, uint32_t size, uint64_t timeout)
     switch (e.code)
     {
         case ECONNRESET:
+        case EPIPE:
         {
             throw disconnected_exception("{}", uri());
         }
@@ -79,6 +80,7 @@ uint32_t socket::send(const char* data, uint32_t size, uint64_t timeout)
     switch (e.code)
     {
         case ECONNRESET:
+        case EPIPE:
         {
             throw disconnected_exception("{}", uri());
         }
