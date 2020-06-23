@@ -10,7 +10,7 @@
 #include <net/uri.h>
 #include <tyrdbs/cache.h>
 #include <tyrdbs/meta_node/service.json.h>
-#include <tyrdbs/meta_node/log_module.h>
+#include <tyrdbs/meta_node/log.h>
 #include <crc32c.h>
 
 

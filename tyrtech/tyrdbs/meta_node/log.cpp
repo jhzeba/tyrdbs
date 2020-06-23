@@ -6,7 +6,7 @@
 #include <net/rpc_response.h>
 #include <tyrdbs/writer.h>
 #include <tyrdbs/overwrite_iterator.h>
-#include <tyrdbs/meta_node/log_module.h>
+#include <tyrdbs/meta_node/log.h>
 
 
 namespace tyrtech::tyrdbs::meta_node::log {
@@ -201,7 +201,8 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
             m_transaction_log_condition.wait();
             assert(transaction_log.empty() == false);
 
-            auto transaction = transaction_log.pop();
+            auto transaction = transaction_log.front();
+            transaction_log.pop();
 
             auto tid = std::get<0>(transaction);
             auto& blocks = std::get<1>(transaction);
@@ -357,8 +358,8 @@ void impl::merge_thread()
         auto merge_id = m_merge_requests.front();
         m_merge_requests.pop();
 
-        assert(m_merge_request_filter[merge_id] == true);
-        m_merge_request_filter[merge_id] = false;
+        assert(m_merge_requests_filter[merge_id] == true);
+        m_merge_requests_filter[merge_id] = false;
 
         if (m_merge_locks[merge_id] == true)
         {
@@ -379,12 +380,12 @@ void impl::request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id)
 {
     auto merge_id = merge_id_from(ushard_id, tier_id);
 
-    if (m_merge_request_filter[merge_id] == true)
+    if (m_merge_requests_filter[merge_id] == true)
     {
         return;
     }
 
-    m_merge_request_filter[merge_id] = true;
+    m_merge_requests_filter[merge_id] = true;
     m_merge_requests.push(merge_id);
 
     m_merge_cond.signal();
@@ -682,7 +683,7 @@ impl::impl(const std::string_view& path,
     }
 
     m_merge_locks.resize(ushards * ushard::max_tiers);
-    m_merge_request_filter.resize(ushards * ushard::max_tiers);
+    m_merge_requests_filter.resize(ushards * ushard::max_tiers);
 
     m_ushards.resize(ushards);
 

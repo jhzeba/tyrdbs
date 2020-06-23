@@ -2,7 +2,6 @@
 
 
 #include <common/dynamic_buffer.h>
-#include <common/ring_queue.h>
 #include <gt/condition.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/meta_node/ushard.h>
@@ -70,7 +69,7 @@ private:
             std::tuple<slices_t, blocks_ptr>;
 
     using transaction_log_t =
-            ring_queue<std::tuple<uint64_t, blocks_ptr>>;
+            std::queue<std::tuple<uint64_t, blocks_ptr>>;
 
     using transaction_log_map_t =
             std::unordered_map<gt::context_t, transaction_log_t*>;
@@ -87,7 +86,7 @@ private:
     gt::condition m_merge_cond;
     bool_vec_t m_merge_locks;
 
-    bool_vec_t m_merge_request_filter;
+    bool_vec_t m_merge_requests_filter;
     merge_requests_t m_merge_requests;
 
     uint64_t m_merged_keys{0};

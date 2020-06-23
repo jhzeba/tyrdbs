@@ -15,7 +15,7 @@ default_libs = [
 env.Program('meta_node',
             source=[
                 'meta_node.cpp',
-                'log_module.cpp',
+                'log.cpp',
                 'ushard.cpp'
             ],
             LIBS=default_libs)
