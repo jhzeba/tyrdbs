@@ -198,8 +198,10 @@ void impl::fetch(const fetch::request_parser_t& request, context* ctx)
     {
         while (true)
         {
-            m_transaction_log_condition.wait();
-            assert(transaction_log.empty() == false);
+            while (transaction_log.empty() == true)
+            {
+                m_transaction_log_condition.wait();
+            }
 
             auto transaction = transaction_log.front();
             transaction_log.pop();
