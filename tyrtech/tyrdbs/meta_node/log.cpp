@@ -636,6 +636,11 @@ void impl::send_keys(uint16_t ushard_id, net::socket_channel* channel)
 
     while (it.next() == true)
     {
+        if (it.deleted() == true)
+        {
+            continue;
+        }
+
         uint32_t bytes_required = 0;
 
         bytes_required += tyrdbs::meta_node::block_builder::entries_bytes_required();
