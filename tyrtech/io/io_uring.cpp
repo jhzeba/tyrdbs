@@ -89,8 +89,20 @@ void engine::io_uring_thread()
 
                 if (unlikely(res < 0))
                 {
-                    throw runtime_error_exception("io_uring_submit_and_wait(): {}",
-                                                  system_error(-res).message);
+                    auto e = system_error(-res);
+
+                    switch(e.code)
+                    {
+                        case EINTR:
+                        {
+                            continue;
+                        }
+                        default:
+                        {
+                            throw runtime_error_exception("io_uring_submit_and_wait(): {}",
+                                                          e.message);
+                        }
+                    }
                 }
             }
 
