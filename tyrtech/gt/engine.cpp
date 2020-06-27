@@ -2,6 +2,7 @@
 #include <common/disallow_move.h>
 #include <gt/engine.h>
 #include <extern/gtswitch.h>
+#include <signal.h>
 
 
 namespace tyrtech::gt {
@@ -333,6 +334,8 @@ uint64_t user_contexts()
 
 void run()
 {
+    signal(SIGPIPE, SIG_IGN);
+
     while (true)
     {
         if (yield(false) == false)
