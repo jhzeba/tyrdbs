@@ -292,7 +292,7 @@ void impl::merge(uint32_t merge_id)
 
     auto slices = ushard.get(tier_id);
 
-    auto fw = std::make_shared<file_writer>("data/{:016x}.dat", rdrnd());
+    auto fw = std::make_shared<file_writer>("{}/{:016x}.dat", m_path, rdrnd());
     auto writer = std::make_unique<slice_writer>(fw);
 
     auto it = overwrite_iterator(slices);

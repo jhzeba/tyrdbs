@@ -28,7 +28,7 @@ void service_thread(const cmd_line& cmd)
 {
     auto ch = net::uri::listen(cmd.get<std::string_view>("uri"));
 
-    tyrdbs::meta_node::log::impl impl(cmd.get<std::string_view>("path"),
+    tyrdbs::meta_node::log::impl impl(cmd.get<std::string_view>("data"),
                                       cmd.get<uint32_t>("merge-threads"),
                                       cmd.get<uint32_t>("ushards"),
                                       cmd.get<uint32_t>("max-slices"));
@@ -103,9 +103,9 @@ int main(int argc, const char* argv[])
                   "12",
                   {"cache size expressed as 2^bits (default is 12)"});
 
-    cmd.add_param("path",
+    cmd.add_param("data",
                   nullptr,
-                  "path",
+                  "data",
                   "path",
                   "data",
                   {"data path to use (default is data)"});
