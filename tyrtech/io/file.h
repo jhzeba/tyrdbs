@@ -71,6 +71,14 @@ public:
         return f;
     }
 
+    static file open_stdin()
+    {
+        file f("/dev/stdin");
+        f.m_fd = 0;
+
+        return f;
+    }
+
 public:
     uint32_t pread(uint64_t offset, char* data, uint32_t size) const;
     uint32_t pwrite(uint64_t offset, const char* data, uint32_t size) const;
