@@ -12,8 +12,7 @@ common_sources = [
     'rdrnd.cpp',
     'dynamic_buffer.cpp',
     'logger.cpp',
-    'system_error.cpp',
-    'uuid.cpp'
+    'system_error.cpp'
 ]
 
 env.StaticLibrary(target='{0}/common'.format(BUILD_DIR), source=common_sources)

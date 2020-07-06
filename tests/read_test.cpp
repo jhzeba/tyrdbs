@@ -1,6 +1,5 @@
 #include <common/cpu_sched.h>
 #include <common/cmd_line.h>
-#include <common/uuid.h>
 #include <common/system_error.h>
 #include <gt/engine.h>
 #include <gt/condition.h>
