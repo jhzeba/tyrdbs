@@ -77,7 +77,9 @@ private:
 private:
     std::string_view m_path;
 
+    uint64_t m_next_cache_id{1};
     uint64_t m_next_tid{1};
+
     uint32_t m_max_slices{16384};
 
     uint32_t m_slice_count{0};

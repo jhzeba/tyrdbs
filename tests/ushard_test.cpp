@@ -159,7 +159,9 @@ struct thread_data
     }
 };
 
-uint32_t tid{1};
+uint64_t cache_id{1};
+uint64_t tid{1};
+
 std::string string_storage;
 
 
@@ -197,6 +199,7 @@ void insert(const data_set_t& data, thread_data* td)
     auto reader = std::make_shared<file_reader>(fw->path());
     auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
 
+    slice->set_cache_id(cache_id++);
     slice->set_tid(tid++);
 
     auto tier = tier_of(slice);
@@ -374,6 +377,8 @@ void merge(thread_data* td, uint8_t tier)
 
     auto reader = std::make_shared<file_reader>(fw->path());
     auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
+
+    slice->set_cache_id(cache_id++);
 
     if (compact == true)
     {

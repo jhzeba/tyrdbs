@@ -254,6 +254,8 @@ void impl::update(const update::request_parser_t& request, context* ctx)
         auto& ushard = m_ushards[ushard_id];
 
         auto& slice = it.second;
+
+        slice->set_cache_id(m_next_cache_id++);
         slice->set_tid(tid);
 
         auto tier_id = ushard::tier_id_of(slice->key_count());
@@ -304,6 +306,8 @@ void impl::merge(uint32_t merge_id)
 
     auto reader = std::make_shared<file_reader>(fw->path());
     auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
+
+    slice->set_cache_id(m_next_cache_id++);
 
     m_merged_keys += slice->key_count();
     m_merged_size += fw->offset();

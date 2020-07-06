@@ -34,6 +34,7 @@ public:
 
     uint64_t key_count() const;
 
+    void set_cache_id(uint64_t cache_id);
     void set_tid(uint64_t tid);
 
 public:

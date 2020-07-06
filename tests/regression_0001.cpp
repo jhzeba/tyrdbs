@@ -125,6 +125,8 @@ TEST_CASE("split_key_1")
         auto sr = std::make_shared<string_reader>(data);
         auto slice = tyrdbs::slice(data.size(), std::move(sr));
 
+        slice.set_cache_id(1);
+
         {
             auto value = get_value_for(&slice, "0001");
             CHECK(value.size() == 8109);
@@ -180,6 +182,8 @@ TEST_CASE("split_key_2")
         auto sr = std::make_shared<string_reader>(data);
         auto slice = tyrdbs::slice(data.size(), std::move(sr));
 
+        slice.set_cache_id(1);
+
         {
             auto value = get_value_for(&slice, "0001");
             CHECK(value.size() == 4096);
@@ -233,6 +237,8 @@ TEST_CASE("split_key_3")
     {
         auto sr = std::make_shared<string_reader>(data);
         auto slice = tyrdbs::slice(data.size(), std::move(sr));
+
+        slice.set_cache_id(1);
 
         {
             auto value = get_value_for(&slice, "0001");
@@ -295,6 +301,8 @@ TEST_CASE("split_key_4")
         auto sr = std::make_shared<string_reader>(data);
         auto slice = tyrdbs::slice(data.size(), std::move(sr));
 
+        slice.set_cache_id(1);
+
         {
             auto value = get_value_for(&slice, "0001");
             CHECK(value.size() == 8109);
@@ -355,6 +363,8 @@ TEST_CASE("split_key_5")
     {
         auto sr = std::make_shared<string_reader>(data);
         auto slice = tyrdbs::slice(data.size(), std::move(sr));
+
+        slice.set_cache_id(1);
 
         {
             auto value = get_value_for(&slice, "0001");
