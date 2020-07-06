@@ -1,14 +1,11 @@
+#include <common/branch_prediction.h>
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/location.h>
-#include <tyrdbs/cache.h>
 
 #include <crc32c.h>
 
 
 namespace tyrtech::tyrdbs {
-
-
-extern thread_local uint64_t __cache_id;
 
 
 void slice_writer::index_writer::add(const std::string_view& min_key,
@@ -20,10 +17,7 @@ void slice_writer::index_writer::add(const std::string_view& min_key,
         m_first_key.assign(min_key);
     }
 
-    index_attributes attributes;
-    attributes.location = location;
-
-    auto res = m_node.add(min_key, max_key, true, false, attributes, true);
+    auto res = m_node.add(min_key, max_key, true, false, location, true);
 
     if (res == -1)
     {
@@ -32,11 +26,11 @@ void slice_writer::index_writer::add(const std::string_view& min_key,
             m_higher_level = std::make_unique<index_writer>(m_writer);
         }
 
-        location = m_writer->store(&m_node, false);
+        auto new_location = m_writer->store(&m_node, false);
 
-        m_node.add(min_key, max_key, true, false, attributes, true);
+        m_node.add(min_key, max_key, true, false, location, true);
 
-        m_higher_level->add(m_first_key.data(), m_last_key.data(), location);
+        m_higher_level->add(m_first_key.data(), m_last_key.data(), new_location);
         m_first_key.assign(min_key);
     }
     else
@@ -108,10 +102,7 @@ void slice_writer::add(const std::string_view& key,
 
     while (true)
     {
-        data_attributes attributes;
-        attributes.tid = tid;
-
-        if (auto res = m_node.add(key, value, eor, deleted, attributes, false); res != -1)
+        if (auto res = m_node.add(key, value, eor, deleted, tid, false); res != -1)
         {
             value = value.substr(res, value.size() - res);
 
@@ -175,8 +166,7 @@ void slice_writer::flush()
 }
 
 slice_writer::slice_writer(std::shared_ptr<tyrdbs::writer> writer)
-  : m_cache_id(__cache_id++)
-  , m_writer(std::move(writer))
+  : m_writer(std::move(writer))
 {
 }
 
@@ -204,11 +194,6 @@ tyrdbs::writer* slice_writer::writer()
 uint64_t slice_writer::key_count() const
 {
     return m_header.stats.key_count;
-}
-
-uint64_t slice_writer::cache_id() const
-{
-    return m_cache_id;
 }
 
 bool slice_writer::check(const std::string_view& key,
@@ -266,12 +251,12 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     assert(likely(m_commited == false));
 
     using buffer_t =
-            std::array<char, node::page_size + 64>;
+            std::array<char, node::page_size + 128>;
 
     buffer_t buffer;
 
     uint32_t size = node->flush(buffer.data(), buffer.size());
-    assert(likely(size <= node::page_size + 64));
+    assert(likely(size <= location::max_size));
 
     if (m_header.first_node_size != location::invalid_size)
     {
@@ -292,10 +277,6 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
     {
         m_last_node->set_next(location);
     }
-
-    m_last_node = node->reset();
-
-    cache::set(m_cache_id, location, m_last_node);
 
     m_header.stats.compressed_size += size;
     m_header.stats.uncompressed_size += node::page_size;

@@ -27,9 +27,7 @@ public:
     void commit();
 
     tyrdbs::writer* writer();
-
     uint64_t key_count() const;
-    uint64_t cache_id() const;
 
 public:
     slice_writer(std::shared_ptr<tyrdbs::writer> writer);
@@ -68,8 +66,6 @@ private:
             std::shared_ptr<tyrdbs::writer>;
 
 private:
-    uint64_t m_cache_id{static_cast<uint64_t>(-1)};
-
     key_buffer m_first_key;
     key_buffer m_last_key;
 

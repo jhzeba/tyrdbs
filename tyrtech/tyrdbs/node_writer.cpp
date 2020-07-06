@@ -1,99 +1,160 @@
+#include <common/branch_prediction.h>
 #include <common/exception.h>
 #include <tyrdbs/node_writer.h>
 
+#include <blosc.h>
+
 #include <memory>
 #include <cstring>
-#include <lz4.h>
 
 
 namespace tyrtech::tyrdbs {
 
 
-uint32_t node_writer::flush(char* sink, uint32_t sink_size)
+int32_t node_writer::add(const std::string_view& key,
+                         const std::string_view& value,
+                         bool eor,
+                         bool deleted,
+                         uint64_t meta,
+                         bool no_split)
 {
-    if (unlikely(m_node == nullptr))
+    assert(likely(key.size() != 0));
+    assert(likely(key.size() <= node::max_key_size));
+
+    if (m_key_count == max_keys)
     {
-        internal_reset();
+        return -1;
     }
 
-    assert(likely(sink_size >= node::page_size + 64));
+    uint16_t required_size{0};
 
-    *reinterpret_cast<uint16_t*>(m_data->data()) = m_key_count;
+    required_size += sizeof(node::entry);
+    required_size += key.size();
 
-    int32_t r = LZ4_compress_default(m_data->data(),
-                                     sink,
-                                     m_data->size(),
-                                     sink_size);
-
-    if (r == 0)
+    if (no_split == true)
     {
-        throw runtime_error_exception("unable to compress node");
+        required_size += value.size();
     }
 
-    return r;
-}
+    if (m_available_size < required_size)
+    {
+        return -1;
+    }
 
-std::shared_ptr<node> node_writer::reset()
-{
-    assert(likely(m_node != nullptr));
-    m_node->m_key_count = m_key_count;
+    m_available_size -= sizeof(node::entry);
+    m_available_size -= key.size();
 
-    return std::move(m_node);
-}
+    std::memcpy(m_keys.data() + m_keys_size, key.data(), key.size());
+    m_keys_size += key.size();
 
-void node_writer::internal_reset()
-{
-    m_node = std::make_shared<node>();
+    auto partial_value_size = std::min(static_cast<size_t>(m_available_size),
+                                       value.size());
 
-    m_data = &m_node->m_data;
-    m_data->fill(0);
+    m_available_size -= partial_value_size;
 
-    m_entry_offset = sizeof(node::m_key_count);
-    m_data_offset = m_data->size();
+    std::memcpy(m_values.data() + m_values_size, value.data(), partial_value_size);
+    m_values_size += partial_value_size;
 
-    m_key_count = 0;
-}
+    node::entry& e = m_entries[m_key_count];
 
-node::entry* node_writer::next_entry()
-{
-    node::entry* entry = reinterpret_cast<node::entry*>(m_data->data() + m_entry_offset);
-    m_entry_offset += sizeof(node::entry);
+    e.key_end_offset = m_keys_size;
+    e.value_end_offset = m_values_size;
+    e.eor = eor && value.size() == partial_value_size;
+    e.meta = meta;
+    e.deleted = deleted;
 
     m_key_count++;
 
-    return entry;
+    if (m_key_size == static_cast<uint16_t>(-1))
+    {
+        m_key_size = key.size();
+    }
+
+    if (m_key_size != key.size())
+    {
+        m_key_size = 0;
+    }
+
+    if (m_value_size == static_cast<uint16_t>(-1))
+    {
+        m_value_size = partial_value_size;
+    }
+
+    if (m_value_size != partial_value_size)
+    {
+        m_value_size = 0;
+    }
+
+    return partial_value_size;
 }
 
-void node_writer::allocate(uint16_t size)
+uint32_t node_writer::flush(char* sink, uint32_t sink_size)
 {
-    assert(likely(m_entry_offset + size <= m_data_offset));
-    m_data_offset -= size;
+    assert(likely(sink_size >= node::page_size + 128));
+    uint32_t _sink_size = sink_size;
+
+    {
+        uint16_t* key_count = reinterpret_cast<uint16_t*>(sink);
+        *key_count = m_key_count;
+
+        sink += sizeof(uint16_t);
+        sink_size -= sizeof(uint16_t);
+    }
+
+    sink += compress_block(reinterpret_cast<char*>(m_entries),
+                           sizeof(node::entry) * m_key_count,
+                           sink,
+                           &sink_size,
+                           sizeof(node::entry));
+
+    sink += compress_block(m_keys.data(),
+                           m_keys_size,
+                           sink,
+                           &sink_size,
+                           m_key_size);
+
+    sink += compress_block(m_values.data(),
+                           m_values_size,
+                           sink,
+                           &sink_size,
+                           m_value_size);
+
+    m_available_size = node::page_size;
+    m_keys_size = 0;
+    m_values_size = 0;
+    m_key_count = 0;
+    m_key_size = static_cast<uint16_t>(-1);
+    m_value_size = static_cast<uint16_t>(-1);
+
+    return _sink_size - sink_size;
 }
 
-std::string_view node_writer::copy(const std::string_view& key)
+uint32_t node_writer::compress_block(char* source,
+                                     uint32_t source_size,
+                                     char* sink,
+                                     uint32_t* sink_size,
+                                     uint32_t type_size)
 {
-    allocate(key.size());
+    uint16_t* size = reinterpret_cast<uint16_t*>(sink);
 
-    std::memcpy(m_data->data() + m_data_offset, key.data(), key.size());
+    sink += sizeof(uint16_t);
+    *sink_size -= sizeof(uint16_t);
 
-    return std::string_view(m_data->data() + m_data_offset, key.size());
-}
+    auto res = blosc_compress_ctx(compression_level,
+                                  (type_size != 0) ? BLOSC_SHUFFLE : BLOSC_NOSHUFFLE,
+                                  (type_size != 0) ? type_size : 1,
+                                  source_size,
+                                  source,
+                                  sink,
+                                  *sink_size,
+                                  BLOSC_LZ4_COMPNAME,
+                                  0, 0);
+    assert(res > 0);
 
-std::string_view node_writer::copy(const std::string_view& value, uint16_t reserved_space)
-{
-    uint32_t available_space;
+    *sink_size -= res;
+    *size = res;
 
-    available_space = m_data_offset;
-    available_space -= m_entry_offset + reserved_space;
-
-    uint16_t partial_size = std::min(static_cast<size_t>(available_space), value.size());
-
-    assert(likely(partial_size < 16384));
-    allocate(partial_size);
-
-    std::memcpy(m_data->data() + m_data_offset, value.data(), partial_size);
-
-    return std::string_view(m_data->data() + m_data_offset, partial_size);
+    return sizeof(uint16_t) + res;
 }
 
 }

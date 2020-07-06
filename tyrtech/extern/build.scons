@@ -9,7 +9,6 @@ env.Append(CPPPATH=':{0}/tyrtech/extern'.format(PROJECT_DIR))
 extern_sources = [
     'crc32c.c',
     'gtswitch.s',
-    'lz4.c',
     'fmt/format.cc',
     'doctest/parts/doctest.cpp',
     'tdigest.c',

@@ -303,9 +303,7 @@ void impl::merge(uint32_t merge_id)
     writer->commit();
 
     auto reader = std::make_shared<file_reader>(fw->path());
-    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
-                                                 writer->cache_id(),
-                                                 std::move(reader));
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
 
     m_merged_keys += slice->key_count();
     m_merged_size += fw->offset();
@@ -506,9 +504,7 @@ impl::transaction_t impl::process_transaction(net::socket_channel* channel)
             file_writer* fw = static_cast<file_writer*>(writer->writer());
 
             auto reader = std::make_shared<file_reader>(fw->path());
-            auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
-                                                         writer->cache_id(),
-                                                         std::move(reader));
+            auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
 
             slices[ushard_id] = std::move(slice);
         };

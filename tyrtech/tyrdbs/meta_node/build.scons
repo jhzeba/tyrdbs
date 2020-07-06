@@ -9,13 +9,15 @@ default_libs = [
     'common',
     'extern',
     'uring',
-    'uuid'
+    'blosc'
 ]
 
-env.Program('meta_node',
-            source=[
-                'meta_node.cpp',
-                'log.cpp',
-                'ushard.cpp'
-            ],
-            LIBS=default_libs)
+env.Program(
+    target='meta_node',
+    source=[
+        'meta_node.cpp',
+        'log.cpp',
+        'ushard.cpp'
+    ],
+    LIBS=default_libs
+)

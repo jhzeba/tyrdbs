@@ -195,9 +195,7 @@ void insert(const data_set_t& data, thread_data* td)
     w.commit();
 
     auto reader = std::make_shared<file_reader>(fw->path());
-    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
-                                                 w.cache_id(),
-                                                 std::move(reader));
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
 
     slice->set_tid(tid++);
 
@@ -375,9 +373,7 @@ void merge(thread_data* td, uint8_t tier)
     w.commit();
 
     auto reader = std::make_shared<file_reader>(fw->path());
-    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(),
-                                                 w.cache_id(),
-                                                 std::move(reader));
+    auto slice = std::make_shared<tyrdbs::slice>(fw->offset(), std::move(reader));
 
     if (compact == true)
     {

@@ -33,9 +33,9 @@ private:
     slice* m_slice{nullptr};
 
     std::shared_ptr<node> m_node;
-    uint16_t m_ndx{static_cast<uint16_t>(-1)};
 
-    const data_attributes* m_attrs{nullptr};
+    uint16_t m_ndx{static_cast<uint16_t>(-1)};
+    uint64_t m_tid{static_cast<uint64_t>(-1)};
 
 private:
     bool load_next();
@@ -48,9 +48,9 @@ bool slice_iterator::next()
         return false;
     }
 
-    if (m_attrs == nullptr)
+    if (m_tid == static_cast<uint64_t>(-1))
     {
-        m_attrs = m_node->attributes_at<data_attributes>(m_ndx);
+        m_tid = m_node->meta_at(m_ndx);
         return true;
     }
 
@@ -69,7 +69,7 @@ bool slice_iterator::next()
 
     m_ndx++;
 
-    m_attrs = m_node->attributes_at<data_attributes>(m_ndx);
+    m_tid = m_node->meta_at(m_ndx);
 
     return true;
 }
@@ -96,13 +96,13 @@ bool slice_iterator::deleted() const
 
 uint64_t slice_iterator::tid() const
 {
-    if (m_attrs->tid == 0)
+    if (m_tid == 0)
     {
         assert(m_slice->m_tid != 0);
         return m_slice->m_tid;
     }
 
-    return m_attrs->tid;
+    return m_tid;
 }
 
 slice_iterator::slice_iterator(slice* slice, cache::node_ptr node, uint16_t ndx)
@@ -187,8 +187,8 @@ void slice::set_tid(uint64_t tid)
     m_tid = tid;
 }
 
-slice::slice(uint64_t size, uint64_t cache_id, std::shared_ptr<reader> reader)
-  : m_cache_id(cache_id)
+slice::slice(uint64_t size, std::shared_ptr<reader> reader)
+  : m_cache_id(__cache_id++)
   , m_reader(std::move(reader))
 {
     if (m_cache_id == static_cast<uint64_t>(-1))
@@ -263,7 +263,7 @@ uint64_t slice::find_node_for(uint64_t location,
             return static_cast<uint64_t>(-1);
         }
 
-        location = node->template attributes_at<index_attributes>(ndx)->location;
+        location = node->meta_at(ndx);
 
         if (location::is_leaf(location) == true)
         {

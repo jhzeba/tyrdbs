@@ -2,7 +2,7 @@
 #include <common/exception.h>
 #include <tyrdbs/node.h>
 
-#include <lz4.h>
+#include <blosc.h>
 #include <cassert>
 
 
@@ -12,18 +12,21 @@ namespace tyrtech::tyrdbs {
 void node::load(const char* source, uint32_t source_size)
 {
     assert(likely(m_key_count == static_cast<uint16_t>(-1)));
+    uint32_t output_size{0};
 
-    int32_t r = LZ4_decompress_safe(source,
-                                    m_data.data(),
-                                    source_size,
-                                    m_data.size());
-
-    if (r != page_size)
     {
-        throw runtime_error_exception("unable to decompress node");
+        m_key_count = *reinterpret_cast<const uint16_t*>(source);
+        source += sizeof(uint16_t);
     }
 
-    m_key_count = *reinterpret_cast<const uint16_t*>(m_data.data());
+    m_entries = reinterpret_cast<entry*>(m_data.data() + output_size);
+    source += decompress_block(source, &output_size);
+
+    m_keys = m_data.data() + output_size;
+    source += decompress_block(source, &output_size);
+
+    m_values = m_data.data() + output_size;
+    source += decompress_block(source, &output_size);
 }
 
 uint64_t node::get_next() const
@@ -44,29 +47,52 @@ uint16_t node::key_count() const
 
 std::string_view node::key_at(uint16_t ndx) const
 {
-    const entry* entry = entry_at(ndx);
+    assert(ndx < m_key_count);
 
-    return std::string_view(m_data.data() + entry->key_offset, entry->key_size);
+    uint16_t start_off = 0;
+    uint16_t end_off = m_entries[ndx].key_end_offset;
+
+    if (ndx != 0)
+    {
+        start_off = m_entries[ndx-1].key_end_offset;
+    }
+
+    return std::string_view(m_keys + start_off,
+                            end_off - start_off);
 }
 
 std::string_view node::value_at(uint16_t ndx) const
 {
-    const entry* entry = entry_at(ndx);
+    assert(ndx < m_key_count);
 
-    uint16_t offset = entry->key_offset;
-    offset -= entry->value_size;
+    uint16_t start_off = 0;
+    uint16_t end_off = m_entries[ndx].value_end_offset;
 
-    return std::string_view(m_data.data() + offset, entry->value_size);
+    if (ndx != 0)
+    {
+        start_off = m_entries[ndx-1].value_end_offset;
+    }
+
+    return std::string_view(m_values + start_off,
+                            end_off - start_off);
 }
 
 bool node::eor_at(uint16_t ndx) const
 {
-    return entry_at(ndx)->eor;
+    assert(ndx < m_key_count);
+    return m_entries[ndx].eor;
 }
 
 bool node::deleted_at(uint16_t ndx) const
 {
-    return entry_at(ndx)->deleted;
+    assert(ndx < m_key_count);
+    return m_entries[ndx].deleted;
+}
+
+uint64_t node::meta_at(uint16_t ndx) const
+{
+    assert(ndx < m_key_count);
+    return m_entries[ndx].meta;
 }
 
 uint16_t node::lower_bound(const std::string_view& key) const
@@ -101,15 +127,26 @@ uint16_t node::lower_bound(const std::string_view& key) const
     return end;
 }
 
-const node::entry* node::entry_at(uint16_t ndx) const
+uint32_t node::decompress_block(const char* source, uint32_t* output_size)
 {
-    const char* data = m_data.data();
+    uint16_t size = *reinterpret_cast<const uint16_t*>(source);
+    source += sizeof(uint16_t);
 
-    data += sizeof(m_key_count);
-    data += ndx << 1;
-    data += ndx << 2;
+    char* sink = m_data.data() + *output_size;
 
-    return reinterpret_cast<const entry*>(data);
+    auto res = blosc_decompress_ctx(source,
+                                    sink,
+                                    m_data.size() - *output_size,
+                                    0);
+
+    if (res < 0)
+    {
+        throw runtime_error_exception("unable to decompress node");
+    }
+
+    *output_size += res;
+
+    return sizeof(uint16_t) + size;
 }
 
 }

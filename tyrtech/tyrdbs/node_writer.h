@@ -1,7 +1,6 @@
 #pragma once
 
 
-#include <common/branch_prediction.h>
 #include <tyrdbs/node.h>
 
 #include <cstring>
@@ -14,97 +13,42 @@ namespace tyrtech::tyrdbs {
 class node_writer : private disallow_copy, disallow_move
 {
 public:
-    template<typename Attributes>
+    static constexpr uint32_t max_keys{1024};
+    static constexpr int32_t compression_level{4};
+
+public:
     int32_t add(const std::string_view& key,
                 const std::string_view& value,
                 bool eor,
                 bool deleted,
-                const Attributes& attributes,
-                bool no_split)
-    {
-        assert(likely(key.size() != 0));
-        assert(likely(key.size() < node::max_key_size));
-
-        if (m_node == nullptr)
-        {
-            internal_reset();
-        }
-
-        if (has_enough_space<Attributes>(key, value, no_split) == false)
-        {
-            return -1;
-        }
-
-        node::entry* entry = next_entry();
-
-        auto copied_key = copy(key);
-        auto copied_value = copy(value, sizeof(attributes));
-
-        copy(attributes);
-
-        entry->value_size = copied_value.size();
-        entry->key_offset = copied_key.data() - m_data->data();
-        entry->key_size = copied_key.size();
-        entry->eor = eor && value.size() == copied_value.size();
-        entry->deleted = deleted;
-
-        return copied_value.size();
-    }
+                uint64_t meta,
+                bool no_split);
 
     uint32_t flush(char* sink, uint32_t sink_size);
-    std::shared_ptr<node> reset();
+    //std::shared_ptr<node> reset();
 
 private:
-    std::shared_ptr<node> m_node;
+    node::data_t m_keys;
+    node::data_t m_values;
 
-    node::data_t* m_data{nullptr};
+    node::entry m_entries[max_keys];
 
-    uint16_t m_entry_offset{0};
-    uint16_t m_data_offset{0};
+    uint16_t m_available_size{node::page_size};
+
+    uint16_t m_keys_size{0};
+    uint16_t m_values_size{0};
 
     uint16_t m_key_count{0};
 
+    uint16_t m_key_size{static_cast<uint16_t>(-1)};
+    uint16_t m_value_size{static_cast<uint16_t>(-1)};
+
 private:
-    template<typename Attributes>
-    bool has_enough_space(const std::string_view& key,
-                          const std::string_view& value,
-                          bool no_split)
-    {
-        uint16_t required_size = 0;
-
-        required_size += sizeof(node::entry);
-        required_size += key.size();
-        required_size += sizeof(Attributes);
-
-        if (no_split == true)
-        {
-            required_size += value.size();
-        }
-
-        if (m_data_offset - m_entry_offset < required_size)
-        {
-            return false;
-        }
-
-        return true;
-    }
-
-    template<typename Attributes>
-    void copy(const Attributes& attributes)
-    {
-        allocate(sizeof(Attributes));
-
-        std::memcpy(m_data->data() + m_data_offset, &attributes, sizeof(Attributes));
-    }
-
-    void internal_reset();
-
-    node::entry* next_entry();
-
-    void allocate(uint16_t size);
-
-    std::string_view copy(const std::string_view& key);
-    std::string_view copy(const std::string_view& value, uint16_t reserved_space);
+    uint32_t compress_block(char* source,
+                            uint32_t source_size,
+                            char* sink,
+                            uint32_t* sink_size,
+                            uint32_t type_size);
 };
 
 }
