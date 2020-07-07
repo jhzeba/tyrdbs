@@ -3,9 +3,6 @@
 
 #include <tyrdbs/node.h>
 
-#include <cstring>
-#include <cassert>
-
 
 namespace tyrtech::tyrdbs {
 
@@ -25,7 +22,6 @@ public:
                 bool no_split);
 
     uint32_t flush(char* sink, uint32_t sink_size);
-    //std::shared_ptr<node> reset();
 
 private:
     node::data_t m_keys;

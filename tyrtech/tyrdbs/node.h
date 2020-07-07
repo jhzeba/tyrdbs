@@ -6,7 +6,6 @@
 
 #include <string>
 #include <array>
-#include <cassert>
 
 
 namespace tyrtech::tyrdbs {

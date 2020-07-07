@@ -3,6 +3,7 @@
 #include <tyrdbs/location.h>
 
 #include <crc32c.h>
+#include <cassert>
 
 
 namespace tyrtech::tyrdbs {

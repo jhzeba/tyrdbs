@@ -1,6 +1,8 @@
 #include <tyrdbs/slice_writer.h>
 #include <tyrdbs/overwrite_iterator.h>
 
+#include <cassert>
+
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <doctest/doctest.h>
 

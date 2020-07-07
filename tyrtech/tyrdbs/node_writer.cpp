@@ -5,8 +5,7 @@
 #include <blosc.h>
 
 #include <memory>
-#include <cstring>
-
+#include <cassert>
 
 namespace tyrtech::tyrdbs {
 
