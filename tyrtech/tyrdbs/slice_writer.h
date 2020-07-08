@@ -79,8 +79,6 @@ private:
 
     slice::header m_header;
 
-    std::shared_ptr<node> m_last_node;
-
 private:
     void add(const std::string_view& key,
              std::string_view value,

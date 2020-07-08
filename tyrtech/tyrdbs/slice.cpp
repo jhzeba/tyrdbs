@@ -180,7 +180,7 @@ uint64_t slice::key_count() const
 
 void slice::set_cache_id(uint64_t cache_id)
 {
-    assert(m_cache_id == 0);
+    assert(m_cache_id == static_cast<uint64_t>(-1));
     m_cache_id = cache_id;
 }
 

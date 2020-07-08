@@ -148,17 +148,12 @@ void slice_writer::flush()
     uint64_t location = store(&m_node, true);
     m_writer->write(location::invalid_size);
 
-    auto last_data_node = m_last_node;
-
     if (m_first_key.size() != 0)
     {
         m_index.add(m_first_key.data(), m_last_key.data(), location);
     }
 
     m_header.root = m_index.flush();
-
-    last_data_node->set_next(location::invalid_size);
-    m_last_node->set_next(location::invalid_size);
 
     m_writer->write(location::invalid_size);
     m_writer->write(m_header);
@@ -273,11 +268,6 @@ uint64_t slice_writer::store(node_writer* node, bool is_leaf)
 
     m_writer->write(crc32c_update(0, buffer.data(), size));
     m_writer->write(buffer.data(), size);
-
-    if (m_last_node != nullptr)
-    {
-        m_last_node->set_next(location);
-    }
 
     m_header.stats.compressed_size += size;
     m_header.stats.uncompressed_size += node::page_size;
