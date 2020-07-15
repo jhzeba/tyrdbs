@@ -141,10 +141,14 @@ int main(int argc, const char* argv[])
     catch (cmd_line::format_error_exception& e)
     {
         logger::error("{}", e.what());
+
+        return 1;
     }
     catch (std::exception& e)
     {
         logger::critical("{}", e.what());
+
+        return 2;
     }
 
     return 0;
