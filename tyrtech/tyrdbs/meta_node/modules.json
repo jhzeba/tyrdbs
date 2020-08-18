@@ -10,17 +10,26 @@
                 "id": 1,
                 "request":
                 {
-                    "one_shot": "uint8#"
                 },
                 "response":
                 {
-                    "last_segment": "uint8#",
-                    "tid": "uint64"
+                    "last_segment": "uint8#"
+                }
+            },
+            "watch":
+            {
+                "id": 2,
+                "request":
+                {
+                },
+                "response":
+                {
+                    "tid": "uint64#"
                 }
             },
             "update":
             {
-                "id": 2,
+                "id": 3,
                 "request":
                 {
                 },

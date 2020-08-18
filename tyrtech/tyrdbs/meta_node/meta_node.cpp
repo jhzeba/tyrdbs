@@ -28,12 +28,12 @@ void service_thread(const cmd_line& cmd)
 {
     auto ch = net::uri::listen(cmd.get<std::string_view>("uri"));
 
-    tyrdbs::meta_node::log::impl impl(cmd.get<std::string_view>("data"),
-                                      cmd.get<uint32_t>("merge-threads"),
-                                      cmd.get<uint32_t>("ushards"),
-                                      cmd.get<uint32_t>("max-slices"));
+    tyrdbs::meta_node::log::impl log_impl(cmd.get<std::string_view>("data"),
+                                          cmd.get<uint32_t>("merge-threads"),
+                                          cmd.get<uint32_t>("ushards"),
+                                          cmd.get<uint32_t>("max-slices"));
 
-    service_t svc(&impl);
+    service_t svc(&log_impl);
     server_t srv(ch, &svc);
 
     while (gt::terminated() == false)

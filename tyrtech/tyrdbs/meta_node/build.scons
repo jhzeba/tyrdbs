@@ -17,7 +17,9 @@ env.Program(
     source=[
         'meta_node.cpp',
         'log.cpp',
-        'ushard.cpp'
+        'ushard.cpp',
+        'file_reader.cpp',
+        'file_writer.cpp'
     ],
     LIBS=default_libs
 )

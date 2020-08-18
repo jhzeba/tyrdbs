@@ -29,6 +29,7 @@ public:
 
 public:
     void fetch(const fetch::request_parser_t& request, context* ctx);
+    void watch(const watch::request_parser_t& request, context* ctx);
     void update(const update::request_parser_t& request, context* ctx);
 
 public:
@@ -40,12 +41,6 @@ public:
 private:
     using buffer_t =
             std::array<char, net::socket_channel::buffer_size>;
-
-    using bool_vec_t =
-            std::vector<bool>;
-
-    using merge_requests_t =
-            std::queue<uint32_t>;
 
     using ushards_t =
             std::vector<ushard>;
@@ -85,43 +80,14 @@ private:
     uint32_t m_slice_count{0};
     gt::condition m_slice_count_cond;
 
-    gt::condition m_merge_cond;
-    bool_vec_t m_merge_locks;
-
-    bool_vec_t m_merge_requests_filter;
-    merge_requests_t m_merge_requests;
-
-    uint64_t m_merged_keys{0};
-    uint64_t m_merged_size{0};
-
     ushards_t m_ushards;
 
     transaction_log_map_t m_transaction_log_map;
     gt::condition m_transaction_log_condition;
 
-    uint32_t m_suspend_count{0};
-    gt::condition m_suspend_condition;
-
-    uint32_t m_writer_count{0};
-    gt::condition m_writer_condition;
-
 private:
     bool load_block(const block_parser& block, writers_t* writers);
     transaction_t process_transaction(net::socket_channel* channel);
-
-    uint32_t merge_id_from(uint16_t ushard_id, uint8_t tier_id);
-    void request_merge_if_needed(uint16_t ushard_id, uint8_t tier_id);
-    void merge(uint32_t merge_id);
-
-    void merge_thread();
-
-    void print_rate();
-
-    void register_writer();
-    void unregister_writer();
-
-    void suspend_writers();
-    void resume_writers();
 
     void register_transaction_log(transaction_log_t* transaction_log);
     void unregister_transaction_log();
