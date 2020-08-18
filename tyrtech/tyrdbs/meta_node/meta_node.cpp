@@ -138,17 +138,11 @@ int main(int argc, const char* argv[])
 
         gt::run();
     }
-    catch (cmd_line::format_error_exception& e)
-    {
-        logger::error("{}", e.what());
-
-        return 1;
-    }
     catch (std::exception& e)
     {
-        logger::critical("{}", e.what());
+        fmt::print(stderr, "{}\n", e.what());
 
-        return 2;
+        return 1;
     }
 
     return 0;
