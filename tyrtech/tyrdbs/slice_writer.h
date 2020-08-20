@@ -26,7 +26,7 @@ public:
     void flush();
     void commit();
 
-    tyrdbs::writer* writer();
+    uint64_t size() const;
     uint64_t key_count() const;
 
 public:

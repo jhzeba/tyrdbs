@@ -182,14 +182,14 @@ void slice_writer::commit()
     m_commited = true;
 }
 
-tyrdbs::writer* slice_writer::writer()
-{
-    return m_writer.get();
-}
-
 uint64_t slice_writer::key_count() const
 {
     return m_header.stats.key_count;
+}
+
+uint64_t slice_writer::size() const
+{
+    return m_writer->offset();
 }
 
 bool slice_writer::check(const std::string_view& key,
