@@ -18,7 +18,6 @@ env.StaticLibrary(target='{0}/tyrdbs'.format(BUILD_DIR), source=tyrdbs_sources)
 
 
 scripts = [
-    'meta_node/build.scons'
 ]
 
 env.SConscript(scripts, must_exist=1)
