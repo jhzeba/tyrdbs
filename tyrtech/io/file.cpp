@@ -123,7 +123,7 @@ void file::unlink()
     }
 }
 
-std::string_view file::path() const
+const std::string_view& file::path() const
 {
     return m_path_view;
 }

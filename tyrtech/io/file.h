@@ -91,7 +91,7 @@ public:
     struct stat64 stat();
     void unlink();
 
-    std::string_view path() const;
+    const std::string_view& path() const;
     int32_t fd() const;
 
 public:

@@ -173,6 +173,11 @@ void slice::unlink()
     m_unlink = true;
 }
 
+const std::string_view slice::path() const
+{
+    return m_reader->path();
+}
+
 uint64_t slice::key_count() const
 {
     return m_key_count;

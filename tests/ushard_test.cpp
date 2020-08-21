@@ -34,6 +34,11 @@ public:
         m_file.unlink();
     }
 
+    const std::string_view& path() const override
+    {
+        return m_file.path();
+    }
+
 public:
     template<typename... Arguments>
     file_reader(Arguments&&... arguments)

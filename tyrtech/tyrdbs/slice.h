@@ -31,6 +31,7 @@ public:
     std::unique_ptr<iterator> begin();
 
     void unlink();
+    const std::string_view path() const;
 
     uint64_t key_count() const;
 

@@ -58,6 +58,11 @@ public:
     {
     }
 
+    const std::string_view& path() const override
+    {
+        return m_path;
+    }
+
 public:
     string_reader(const std::string_view& buffer)
       : m_buffer(buffer)
@@ -66,6 +71,7 @@ public:
 
 private:
     std::string_view m_buffer;
+    std::string_view m_path;
 };
 
 
