@@ -16,6 +16,7 @@ Export('BUILD_DIR')
 
 vars = Variables()
 vars.Add(BoolVariable('debug', 'set to build debugging version', 0))
+vars.Add(BoolVariable('release', 'set to build release version', 0))
 vars.Add(BoolVariable('profile', 'set to build profiling version', 0))
 vars.Add(BoolVariable('asserts', 'clear to remove asserts', 1))
 vars.Add(BoolVariable('verbose', 'be verbose while compiling', 0))
