@@ -32,6 +32,12 @@ public:
         return m_reader.read();
     }
 
+    template<typename T>
+    void write(const T& data)
+    {
+        write(reinterpret_cast<const char*>(&data), sizeof(T));
+    }
+
     const std::shared_ptr<io::socket>& socket();
 
 public:
